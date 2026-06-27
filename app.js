@@ -522,12 +522,12 @@ function drawSolarChart() {
   const dataActual = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
   const dataForecast = forecastHistory.length > 0 ? forecastHistory : getMockHistory("forecast");
   
-  const w = svg.clientWidth || 500;
+  const w = 500;
   const h = 220;
   
-  const padLeft = 45;
+  const padLeft = 55;
   const padRight = 20;
-  const padTop = 30;
+  const padTop = 20;
   const padBottom = 50;
   
   const chartW = w - padLeft - padRight;
@@ -559,12 +559,12 @@ function drawGridChart() {
   const dataGrid = gridHistory.length > 0 ? gridHistory : getMockHistory("grid");
   const dataSolar = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
   
-  const w = svg.clientWidth || 500;
+  const w = 500;
   const h = 220;
   
-  const padLeft = 45;
+  const padLeft = 55;
   const padRight = 20;
-  const padTop = 30;
+  const padTop = 20;
   const padBottom = 50;
   
   const chartW = w - padLeft - padRight;
@@ -649,11 +649,11 @@ function buildSVGPathRange(data, minTime, maxTime, minVal, maxVal, xOffset, widt
   return path;
 }
 
-// Get daily maximum values (the final/highest value of the day before reset) over the last 10 days
-function getDailyMaxValues(series) {
-  const dailyMax = {};
+// Get daily yield values (max - min) over the last 10 days to support lifetime accumulator sensors
+function getDailyYieldValues(series) {
+  const dailyStats = {};
   
-  // Initialize last 10 days with 0 using calendar date offset
+  // Initialize last 10 days using calendar date offset
   const now = new Date();
   const dayStrings = [];
   for (let i = 9; i >= 0; i--) {
@@ -663,36 +663,49 @@ function getDailyMaxValues(series) {
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const key = `${yyyy}-${mm}-${dd}`;
-    dailyMax[key] = 0;
+    dailyStats[key] = { min: Infinity, max: -Infinity };
     dayStrings.push(key);
   }
   
-  // Find maximum value on each day
+  // Find minimum and maximum values on each day
   for (const point of series) {
     const d = new Date(point.time);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const key = `${yyyy}-${mm}-${dd}`;
-    if (key in dailyMax) {
-      if (point.val > dailyMax[key]) {
-        dailyMax[key] = point.val;
+    if (key in dailyStats) {
+      if (point.val < dailyStats[key].min) {
+        dailyStats[key].min = point.val;
+      }
+      if (point.val > dailyStats[key].max) {
+        dailyStats[key].max = point.val;
       }
     }
   }
   
-  // Convert to array of { day: string, label: string, val: number }
+  // Calculate yield (max - min) and convert to array of { day: string, label: string, val: number }
   const weekdays = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
   return dayStrings.map(key => {
     const [yyyy, mm, dd] = key.split('-');
     const dateObj = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
     const label = `${dd}.${mm}.`;
     const weekday = weekdays[dateObj.getDay()];
+
+    // Calculate the yield for the day. If min or max is untouched, yield is 0.
+    const stats = dailyStats[key];
+    let dailyYield = 0;
+    if (stats.min !== Infinity && stats.max !== -Infinity) {
+      dailyYield = stats.max - stats.min;
+      // Safeguard against reset bugs or weird data where max < min
+      if (dailyYield < 0) dailyYield = 0;
+    }
+
     return {
       day: key,
       shortLabel: label,
       weekday,
-      val: dailyMax[key]
+      val: dailyYield
     };
   });
 }
@@ -704,14 +717,14 @@ function drawSolarYield10DaysChart() {
   if (!svg || !barsGroup || !labelsGroup) return;
 
   const dataYield = solarYield10DaysHistory.length > 0 ? solarYield10DaysHistory : getMockHistory("yield");
-  const dailyData = getDailyMaxValues(dataYield);
+  const dailyData = getDailyYieldValues(dataYield);
 
-  const w = svg.clientWidth || 500;
+  const w = 500;
   const h = 220;
   
-  const padLeft = 45;
+  const padLeft = 55;
   const padRight = 20;
-  const padTop = 30;
+  const padTop = 20;
   const padBottom = 50;
   
   const chartW = w - padLeft - padRight;
@@ -837,7 +850,7 @@ function getMockHistory(type) {
         // Let's add some solar yield
         // Total daily yield can be between 3 and 15 kWh depending on day
         const daySeed = date.getDate();
-        const maxDaily = 4 + (daySeed % 7) * 1.5; // range 4 to 13 kWh
+        const maxDaily = 1 + (daySeed % 3) * 0.5 + Math.random(); // range 1 to 3 kWh
         
         // Accumulate hourly yield using sine
         const hourlyIncrease = maxDaily * (Math.PI / 12) * Math.sin(Math.PI * (hour - 6) / 12) / 2;
