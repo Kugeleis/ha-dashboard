@@ -5,37 +5,46 @@ const manifest = {
   "name": "M75 / Home",
   "version": "0.1.0",
   "read_entities": [
+    "sensor.altpapier_9449",
+    "sensor.bio_9449",
     "sensor.co2_signal_co2_intensity",
     "sensor.co2_signal_grid_fossil_fuel_percentage",
+    "sensor.gelbe_tonne_9449",
     "sensor.m75_solarertrag_jahrlich",
     "sensor.m75_solarertrag_monatlich",
     "sensor.m75_solarertrag_taglich",
     "sensor.m75_solarertrag_wochentlich",
     "sensor.power_production_now_2",
+    "sensor.restabfall_9449",
     "sensor.smartmeter_energy_power_curr",
     "sensor.solar_share",
     "sensor.solaranlage_energy_power_2",
-    "sensor.waste_collection_schedule_abfallkalender",
+    "sensor.solaranlage_energy_today_2",
     "weather.forecast_m75"
   ],
   "subscriptions": [
+    "sensor.altpapier_9449",
+    "sensor.bio_9449",
     "sensor.co2_signal_co2_intensity",
     "sensor.co2_signal_grid_fossil_fuel_percentage",
+    "sensor.gelbe_tonne_9449",
     "sensor.m75_solarertrag_jahrlich",
     "sensor.m75_solarertrag_monatlich",
     "sensor.m75_solarertrag_taglich",
     "sensor.m75_solarertrag_wochentlich",
     "sensor.power_production_now_2",
+    "sensor.restabfall_9449",
     "sensor.smartmeter_energy_power_curr",
     "sensor.solar_share",
     "sensor.solaranlage_energy_power_2",
-    "sensor.waste_collection_schedule_abfallkalender",
+    "sensor.solaranlage_energy_today_2",
     "weather.forecast_m75"
   ],
   "history": [
     "sensor.power_production_now_2",
     "sensor.smartmeter_energy_power_curr",
-    "sensor.solaranlage_energy_power_2"
+    "sensor.solaranlage_energy_power_2",
+    "sensor.solaranlage_energy_today_2"
   ],
   "camera_snapshots": [],
   "actions": [],
@@ -47,27 +56,41 @@ const manifest = {
       {
         "type": "vertical-stack",
         "title": "Vertical stack",
-        "entities": ["sensor.solar_share", "sensor.solaranlage_energy_power_2"]
+        "entities": [
+          "sensor.solar_share",
+          "sensor.solaranlage_energy_power_2"
+        ]
       },
       {
         "type": "entities",
         "title": "CO2 signal",
-        "entities": ["sensor.co2_signal_co2_intensity", "sensor.co2_signal_grid_fossil_fuel_percentage"]
+        "entities": [
+          "sensor.co2_signal_co2_intensity",
+          "sensor.co2_signal_grid_fossil_fuel_percentage"
+        ]
       },
       {
         "type": "history-graph",
         "title": "Solaranlage",
-        "entities": ["sensor.power_production_now_2", "sensor.solaranlage_energy_power_2"]
+        "entities": [
+          "sensor.power_production_now_2",
+          "sensor.solaranlage_energy_power_2"
+        ]
       },
       {
         "type": "history-graph",
         "title": "Energiebezug",
-        "entities": ["sensor.smartmeter_energy_power_curr", "sensor.solaranlage_energy_power_2"]
+        "entities": [
+          "sensor.smartmeter_energy_power_curr",
+          "sensor.solaranlage_energy_power_2"
+        ]
       },
       {
         "type": "weather-forecast",
         "title": "Weather forecast",
-        "entities": ["weather.forecast_m75"]
+        "entities": [
+          "weather.forecast_m75"
+        ]
       },
       {
         "type": "entities",
@@ -81,8 +104,20 @@ const manifest = {
       },
       {
         "type": "entities",
-        "title": "Stadtreinigung",
-        "entities": ["sensor.waste_collection_schedule_abfallkalender"]
+        "title": "🗑️ Abfallkalender M75",
+        "entities": [
+          "sensor.altpapier_9449",
+          "sensor.bio_9449",
+          "sensor.gelbe_tonne_9449",
+          "sensor.restabfall_9449"
+        ]
+      },
+      {
+        "type": "statistics-graph",
+        "title": "Statistics graph",
+        "entities": [
+          "sensor.solaranlage_energy_today_2"
+        ]
       }
     ]
   }
@@ -242,14 +277,52 @@ async function subscribeToData() {
   }
 }
 
-// Translate English Waste Collection strings to German (just in case)
-function translateWasteState(stateStr) {
-  if (!stateStr) return "Keine Abholung geplant";
-  return stateStr
-    .replace(/tomorrow/gi, "morgen")
-    .replace(/today/gi, "heute")
-    .replace(/in (\d+) days/gi, "in $1 Tagen")
-    .replace(/in 1 day/gi, "in 1 Tag");
+// Parse and format waste collection state values (numbers or ISO dates or relative strings) to German
+function formatWasteDays(stateVal) {
+  if (stateVal === undefined || stateVal === null) return "--";
+  
+  const stateStr = String(stateVal).trim();
+  if (stateStr === "" || stateStr.toLowerCase() === "unknown") return "--";
+  
+  // Try to parse as integer (number of days)
+  const daysNum = parseInt(stateStr, 10);
+  if (!Number.isNaN(daysNum) && String(daysNum) === stateStr) {
+    if (daysNum === 0) return "Heute";
+    if (daysNum === 1) return "Morgen";
+    if (daysNum === 2) return "Übermorgen";
+    return `in ${daysNum} Tagen`;
+  }
+  
+  // Try to parse as ISO Date (e.g. YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stateStr)) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(stateStr);
+      targetDate.setHours(0, 0, 0, 0);
+      const diffTime = targetDate.getTime() - today.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return "Heute";
+      if (diffDays === 1) return "Morgen";
+      if (diffDays === 2) return "Übermorgen";
+      if (diffDays > 2) return `in ${diffDays} Tagen`;
+      if (diffDays < 0) return "Vorüber";
+    } catch (e) {}
+  }
+  
+  // Try parsing English/German strings
+  const lowerStr = stateStr.toLowerCase();
+  if (lowerStr === "today" || lowerStr === "heute") return "Heute";
+  if (lowerStr === "tomorrow" || lowerStr === "morgen") return "Morgen";
+  const daysMatch = lowerStr.match(/in (\d+) days?/i) || lowerStr.match(/in (\d+) tagen?/i);
+  if (daysMatch) {
+    const days = parseInt(daysMatch[1], 10);
+    if (days === 1) return "Morgen";
+    if (days === 2) return "Übermorgen";
+    return `in ${days} Tagen`;
+  }
+  
+  return stateStr;
 }
 
 // Update UI Widgets
@@ -335,26 +408,35 @@ function updateDashboardUI() {
     document.getElementById("co2-fossil-val").textContent = `${pct.toFixed(1)}%`;
   }
 
-  // 4. Waste Collection
-  const waste = stateCache["sensor.waste_collection_schedule_abfallkalender"];
-  if (waste) {
-    const stateStr = waste.state || "Keine Abholung geplant";
-    const germanStateStr = translateWasteState(stateStr);
-    document.getElementById("waste-val").textContent = germanStateStr;
+  // 4. Waste Collection (Individual Sensors)
+  const bins = [
+    { id: "altpapier", entity: "sensor.altpapier_9449" },
+    { id: "bio", entity: "sensor.bio_9449" },
+    { id: "gelbe-tonne", entity: "sensor.gelbe_tonne_9449" },
+    { id: "restabfall", entity: "sensor.restabfall_9449" }
+  ];
+  
+  bins.forEach(bin => {
+    const sensor = stateCache[bin.entity];
+    const itemEl = document.getElementById(`waste-${bin.id}`);
+    const valEl = document.getElementById(`waste-${bin.id}-val`);
     
-    const lowerStr = stateStr.toLowerCase();
-    const isSoon = lowerStr.includes("today") || lowerStr.includes("heute") || lowerStr.includes("tomorrow") || lowerStr.includes("morgen") || lowerStr.includes("in 1 tag") || lowerStr.includes("in 2 tag") || lowerStr.includes("in 3 tag") || lowerStr.includes("in 1 day") || lowerStr.includes("in 2 days") || lowerStr.includes("in 3 days");
-    const wasteCard = document.getElementById("card-waste");
-    
-    if (isSoon) {
-      wasteCard.classList.add("waste-alert");
-    } else {
-      wasteCard.classList.remove("waste-alert");
+    if (sensor && valEl && itemEl) {
+      const parsedVal = formatWasteDays(sensor.state);
+      valEl.textContent = parsedVal;
+      
+      const lowerVal = parsedVal.toLowerCase();
+      const isDue = lowerVal === "heute" || lowerVal === "morgen" || lowerVal === "übermorgen" || lowerVal.includes("in 1 tag") || lowerVal.includes("in 2 tag");
+      if (isDue) {
+        itemEl.classList.add("waste-due");
+      } else {
+        itemEl.classList.remove("waste-due");
+      }
     }
-  }
+  });
 
   // 5. Yield Stats
-  const yieldDaily = stateCache["sensor.m75_solarertrag_taglich"];
+  const yieldDaily = stateCache["sensor.solaranlage_energy_today_2"] || stateCache["sensor.m75_solarertrag_taglich"];
   const yieldWeekly = stateCache["sensor.m75_solarertrag_wochentlich"];
   const yieldMonthly = stateCache["sensor.m75_solarertrag_monatlich"];
   const yieldYearly = stateCache["sensor.m75_solarertrag_jahrlich"];
@@ -559,11 +641,15 @@ function loadMockData() {
   };
   stateCache["sensor.co2_signal_co2_intensity"] = { state: "185.2" };
   stateCache["sensor.co2_signal_grid_fossil_fuel_percentage"] = { state: "15.4" };
-  stateCache["sensor.waste_collection_schedule_abfallkalender"] = { state: "Bioabfall morgen" };
+  stateCache["sensor.altpapier_9449"] = { state: "8" };
+  stateCache["sensor.bio_9449"] = { state: "1" };
+  stateCache["sensor.gelbe_tonne_9449"] = { state: "14" };
+  stateCache["sensor.restabfall_9449"] = { state: "3" };
   stateCache["sensor.m75_solarertrag_taglich"] = { state: "6.82" };
   stateCache["sensor.m75_solarertrag_wochentlich"] = { state: "48.15" };
   stateCache["sensor.m75_solarertrag_monatlich"] = { state: "192.40" };
   stateCache["sensor.m75_solarertrag_jahrlich"] = { state: "2480.12" };
+  stateCache["sensor.solaranlage_energy_today_2"] = { state: "6.85" };
   
   updateDashboardUI();
   

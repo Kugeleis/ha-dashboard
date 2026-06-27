@@ -348,58 +348,101 @@ nav.container-fluid {
 }
 
 /* Card 4: Stadtreinigung (Waste Collection) */
-.waste-content {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem;
+.waste-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  padding: 1.25rem;
 }
 
-.waste-icon {
-  font-size: 2.5rem;
-  background: rgba(255,255,255,0.05);
-  width: 60px;
-  height: 60px;
+.waste-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: all var(--transition-speed) ease;
+}
+
+.waste-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.waste-item-icon {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
   display: flex;
   justify-content: center;
   align-items: center;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.05);
-  transition: all var(--transition-speed);
+  transition: transform 0.3s ease;
 }
 
-.dash-card:hover .waste-icon {
-  background: rgba(255,255,255,0.1);
-  transform: rotate(-10deg);
+.waste-item:hover .waste-item-icon {
+  transform: scale(1.1);
 }
 
-.waste-status {
-  flex-grow: 1;
+.waste-item-details {
+  display: flex;
+  flex-direction: column;
 }
 
-.waste-next-event {
-  font-size: 1.1rem;
+.waste-item-title {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.waste-item-days {
+  font-size: 0.95rem;
   font-weight: 700;
   color: #f1f5f9;
 }
 
-.waste-sub {
-  font-size: 0.75rem;
-  color: #64748b;
-  text-transform: uppercase;
+/* Colors for bins */
+.color-blue {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
 }
 
-.waste-alert {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(239, 68, 68, 0.05));
+.color-green {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
 }
-.waste-alert .waste-icon {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+
+.color-yellow {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
 }
-.waste-alert .waste-next-event {
+
+.color-gray {
+  background: rgba(148, 163, 184, 0.15);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+}
+
+/* Alert state for items due soon (today or tomorrow) */
+.waste-item.waste-due {
+  animation: pulse-border 2s infinite alternate;
+  border-color: rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(239, 68, 68, 0.05));
+}
+
+.waste-item.waste-due .waste-item-days {
   color: #f87171;
+}
+
+@keyframes pulse-border {
+  from { border-color: rgba(239, 68, 68, 0.2); }
+  to { border-color: rgba(239, 68, 68, 0.6); }
 }
 
 /* Card 5: Yield Stats */

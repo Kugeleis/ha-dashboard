@@ -143,13 +143,36 @@
       <!-- Card 4: Stadtreinigung (Waste Collection) -->
       <article class="dash-card card-waste" id="card-waste">
         <header>
-          <h5>Stadtreinigung</h5>
+          <h5>🗑️ Abfallkalender</h5>
         </header>
-        <div class="waste-content">
-          <div class="waste-icon">🗑️</div>
-          <div class="waste-status">
-            <div class="waste-next-event" id="waste-val">Prüfe...</div>
-            <div class="waste-sub">Abfallkalender</div>
+        <div class="waste-grid">
+          <div class="waste-item" id="waste-altpapier">
+            <div class="waste-item-icon color-blue">🗑️</div>
+            <div class="waste-item-details">
+              <span class="waste-item-title">Altpapier</span>
+              <span class="waste-item-days" id="waste-altpapier-val">--</span>
+            </div>
+          </div>
+          <div class="waste-item" id="waste-bio">
+            <div class="waste-item-icon color-green">🗑️</div>
+            <div class="waste-item-details">
+              <span class="waste-item-title">Bioabfall</span>
+              <span class="waste-item-days" id="waste-bio-val">--</span>
+            </div>
+          </div>
+          <div class="waste-item" id="waste-gelbe-tonne">
+            <div class="waste-item-icon color-yellow">🗑️</div>
+            <div class="waste-item-details">
+              <span class="waste-item-title">Gelbe Tonne</span>
+              <span class="waste-item-days" id="waste-gelbe-tonne-val">--</span>
+            </div>
+          </div>
+          <div class="waste-item" id="waste-restabfall">
+            <div class="waste-item-icon color-gray">🗑️</div>
+            <div class="waste-item-details">
+              <span class="waste-item-title">Restabfall</span>
+              <span class="waste-item-days" id="waste-restabfall-val">--</span>
+            </div>
           </div>
         </div>
       </article>
