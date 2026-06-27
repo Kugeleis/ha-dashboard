@@ -619,3 +619,23 @@ nav.container-fluid {
   color: #cbd5e1;
   font-size: 0.9rem;
 }
+
+/* Bar Chart styles */
+.chart-bar {
+  transition: y 0.5s ease, height 0.5s ease, fill 0.3s ease;
+}
+
+.chart-bar:hover {
+  filter: brightness(1.2);
+  cursor: pointer;
+}
+
+.value-label {
+  fill: #f1f5f9;
+  font-weight: 600;
+  font-size: 9px;
+}
+
+.date-label {
+  fill: #64748b;
+}

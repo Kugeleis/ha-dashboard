@@ -216,6 +216,7 @@ function setupListeners() {
   window.addEventListener("resize", () => {
     drawSolarChart();
     drawGridChart();
+    drawSolarYield10DaysChart();
   });
 }
 
@@ -451,15 +452,21 @@ function updateDashboardUI() {
 let solarHistory = [];
 let forecastHistory = [];
 let gridHistory = [];
+let solarYield10DaysHistory = [];
 
 async function refreshHistoryData() {
   if (!client) return;
   
   try {
     const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const historyData = await client.queryHistory(manifest.history, { start_time: startTime });
+    const entities24h = [
+      "sensor.solaranlage_energy_power_2",
+      "sensor.power_production_now_2",
+      "sensor.smartmeter_energy_power_curr"
+    ];
+    const historyData = await client.queryHistory(entities24h, { start_time: startTime });
     
-    console.log("History Data:", historyData);
+    console.log("History Data (24h):", historyData);
     
     if (historyData) {
       solarHistory = parseHistorySeries(historyData["sensor.solaranlage_energy_power_2"]);
@@ -470,7 +477,21 @@ async function refreshHistoryData() {
       drawGridChart();
     }
   } catch (error) {
-    console.error("Failed to fetch history:", error);
+    console.error("Failed to fetch 24h history:", error);
+  }
+
+  try {
+    const startTime10Days = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const historyData10Days = await client.queryHistory(["sensor.solaranlage_energy_today_2"], { start_time: startTime10Days });
+    
+    console.log("History Data (10 Days):", historyData10Days);
+    
+    if (historyData10Days && historyData10Days["sensor.solaranlage_energy_today_2"]) {
+      solarYield10DaysHistory = parseHistorySeries(historyData10Days["sensor.solaranlage_energy_today_2"]);
+      drawSolarYield10DaysChart();
+    }
+  } catch (error) {
+    console.error("Failed to fetch 10-day history:", error);
   }
 }
 
@@ -628,6 +649,144 @@ function buildSVGPathRange(data, minTime, maxTime, minVal, maxVal, xOffset, widt
   return path;
 }
 
+// Get daily maximum values (the final/highest value of the day before reset) over the last 10 days
+function getDailyMaxValues(series) {
+  const dailyMax = {};
+  
+  // Initialize last 10 days with 0 using calendar date offset
+  const now = new Date();
+  const dayStrings = [];
+  for (let i = 9; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const key = `${yyyy}-${mm}-${dd}`;
+    dailyMax[key] = 0;
+    dayStrings.push(key);
+  }
+  
+  // Find maximum value on each day
+  for (const point of series) {
+    const d = new Date(point.time);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const key = `${yyyy}-${mm}-${dd}`;
+    if (key in dailyMax) {
+      if (point.val > dailyMax[key]) {
+        dailyMax[key] = point.val;
+      }
+    }
+  }
+  
+  // Convert to array of { day: string, label: string, val: number }
+  const weekdays = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  return dayStrings.map(key => {
+    const [yyyy, mm, dd] = key.split('-');
+    const dateObj = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    const label = `${dd}.${mm}.`;
+    const weekday = weekdays[dateObj.getDay()];
+    return {
+      day: key,
+      shortLabel: label,
+      weekday,
+      val: dailyMax[key]
+    };
+  });
+}
+
+function drawSolarYield10DaysChart() {
+  const svg = document.getElementById("solar-yield-10days-svg");
+  const barsGroup = document.getElementById("bars-group");
+  const labelsGroup = document.getElementById("labels-group");
+  if (!svg || !barsGroup || !labelsGroup) return;
+
+  const dataYield = solarYield10DaysHistory.length > 0 ? solarYield10DaysHistory : getMockHistory("yield");
+  const dailyData = getDailyMaxValues(dataYield);
+
+  const w = svg.clientWidth || 500;
+  const h = 220;
+  
+  const padLeft = 45;
+  const padRight = 20;
+  const padTop = 30;
+  const padBottom = 50;
+  
+  const chartW = w - padLeft - padRight;
+  const chartH = h - padTop - padBottom;
+
+  const maxVal = Math.max(...dailyData.map(d => d.val), 1) * 1.1;
+
+  barsGroup.innerHTML = "";
+  labelsGroup.innerHTML = "";
+
+  const slotWidth = chartW / 10;
+  const barWidth = slotWidth * 0.65;
+  const barGap = slotWidth * 0.35;
+
+  for (let i = 0; i < dailyData.length; i++) {
+    const d = dailyData[i];
+    const x = padLeft + i * slotWidth + barGap / 2;
+    const yPct = maxVal > 0 ? d.val / maxVal : 0;
+    const barHeight = yPct * chartH;
+    const y = padTop + chartH - barHeight;
+    
+    // Create rect for bar
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", x.toFixed(1));
+    rect.setAttribute("y", y.toFixed(1));
+    rect.setAttribute("width", barWidth.toFixed(1));
+    rect.setAttribute("height", Math.max(2, barHeight).toFixed(1));
+    rect.setAttribute("rx", 4);
+    rect.setAttribute("fill", "url(#solar-yield-gradient)");
+    rect.setAttribute("class", "chart-bar");
+    
+    // Tooltip
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = `${d.weekday} ${d.shortLabel}: ${d.val.toFixed(2)} kWh`;
+    rect.appendChild(title);
+    
+    barsGroup.appendChild(rect);
+    
+    // Create value label on top
+    if (d.val > 0) {
+      const valText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      valText.setAttribute("x", (x + barWidth / 2).toFixed(1));
+      valText.setAttribute("y", (y - 6).toFixed(1));
+      valText.setAttribute("class", "chart-label value-label");
+      valText.setAttribute("text-anchor", "middle");
+      valText.textContent = d.val.toFixed(1);
+      labelsGroup.appendChild(valText);
+    }
+    
+    // Create X-axis label (weekday)
+    const weekdayText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    weekdayText.setAttribute("x", (x + barWidth / 2).toFixed(1));
+    weekdayText.setAttribute("y", 192);
+    weekdayText.setAttribute("class", "chart-label x-label");
+    weekdayText.setAttribute("text-anchor", "middle");
+    weekdayText.textContent = d.weekday;
+    labelsGroup.appendChild(weekdayText);
+    
+    // Create X-axis label (date)
+    const dateText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    dateText.setAttribute("x", (x + barWidth / 2).toFixed(1));
+    dateText.setAttribute("y", 205);
+    dateText.setAttribute("class", "chart-label x-label date-label");
+    dateText.setAttribute("text-anchor", "middle");
+    dateText.textContent = d.shortLabel;
+    labelsGroup.appendChild(dateText);
+  }
+
+  // Update Y-axis labels
+  const maxLabel = document.getElementById("yield-10days-y-max");
+  const midLabel = document.getElementById("yield-10days-y-mid");
+  if (maxLabel) maxLabel.textContent = `${maxVal.toFixed(1)} kWh`;
+  if (midLabel) midLabel.textContent = `${(maxVal / 2).toFixed(1)} kWh`;
+}
+
 // Beautiful Simulated Data for Demo and Offline modes
 function loadMockData() {
   console.log("Lade simulierte Demodaten für die Anzeige...");
@@ -656,12 +815,39 @@ function loadMockData() {
   // Render mock charts
   drawSolarChart();
   drawGridChart();
+  drawSolarYield10DaysChart();
 }
 
 function getMockHistory(type) {
-  const points = 24; // 24 hourly points
+  const points = type === "yield" ? 10 * 24 : 24; // 10 days of hourly points or 24 hours
   const list = [];
   const now = Date.now();
+  
+  if (type === "yield") {
+    let currentDailyYield = 0;
+    for (let i = points; i >= 0; i--) {
+      const time = now - i * 60 * 60 * 1000;
+      const date = new Date(time);
+      const hour = date.getHours();
+      
+      // Reset at midnight
+      if (hour === 0) {
+        currentDailyYield = 0;
+      } else if (hour >= 6 && hour <= 18) {
+        // Let's add some solar yield
+        // Total daily yield can be between 3 and 15 kWh depending on day
+        const daySeed = date.getDate();
+        const maxDaily = 4 + (daySeed % 7) * 1.5; // range 4 to 13 kWh
+        
+        // Accumulate hourly yield using sine
+        const hourlyIncrease = maxDaily * (Math.PI / 12) * Math.sin(Math.PI * (hour - 6) / 12) / 2;
+        currentDailyYield += Math.max(0, hourlyIncrease);
+      }
+      
+      list.push({ time, val: parseFloat(currentDailyYield.toFixed(3)) });
+    }
+    return list;
+  }
   
   for (let i = points; i >= 0; i--) {
     const time = now - i * 60 * 60 * 1000;
