@@ -94,7 +94,6 @@ const BRIDGE_URL = "wss://varco-bridge.andreabaccega.com";
 // State cache for entities
 const stateCache = {};
 let client = null;
-let reconnectingTimeout = null;
 
 // DOM Elements
 const connPill = document.getElementById("conn-pill");
@@ -103,13 +102,27 @@ const pairingSection = document.getElementById("pairing-section");
 const pairingCodeEl = document.getElementById("pairing-code");
 const dashboardGrid = document.getElementById("dashboard-grid");
 
+// Weather Translation lookup table
+const weatherTranslations = {
+  "sunny": "Sonnig",
+  "clear-night": "Klare Nacht",
+  "partlycloudy": "Leicht bewölkt",
+  "cloudy": "Bewölkt",
+  "rainy": "Regnerisch",
+  "pouring": "Starker Regen",
+  "snowy": "Schneefall",
+  "fog": "Nebel",
+  "windy": "Windig",
+  "unknown": "Unbekannt"
+};
+
 // Initialize application
 async function init() {
   setupListeners();
   
   // Try to pair and connect
   try {
-    updateConnectionStatus({ mode: "connecting", detail: "Initializing connection..." });
+    updateConnectionStatus({ mode: "connecting", detail: "Verbindung wird initialisiert..." });
     
     client = createVarcoConsumerClient({
       authorityId: AUTHORITY_ID,
@@ -157,7 +170,7 @@ function setupListeners() {
   reconnectBtn.addEventListener("click", async () => {
     if (client) {
       try {
-        updateConnectionStatus({ mode: "connecting", detail: "Reconnecting..." });
+        updateConnectionStatus({ mode: "connecting", detail: "Verbindung wird neu aufgebaut..." });
         await client.close();
       } catch (e) {}
     }
@@ -176,13 +189,13 @@ function updateConnectionStatus(status) {
   
   if (status.mode === "connected" || status.mode === "p2p") {
     connPill.classList.add("badge-connected");
-    connPill.textContent = status.mode === "p2p" ? "Connected (P2P)" : "Connected (Relay)";
-  } else if (status.mode === "connecting" || status.detail?.includes("connecting")) {
+    connPill.textContent = status.mode === "p2p" ? "Verbunden (P2P)" : "Verbunden (Relay)";
+  } else if (status.mode === "connecting" || status.detail?.includes("connecting") || status.detail?.includes("initialisiert") || status.detail?.includes("neu aufgebaut")) {
     connPill.classList.add("badge-connecting");
-    connPill.textContent = "Connecting...";
+    connPill.textContent = "Verbinde...";
   } else {
     connPill.classList.add("badge-disconnected");
-    connPill.textContent = "Disconnected";
+    connPill.textContent = "Nicht verbunden";
   }
   
   if (status.detail) {
@@ -201,7 +214,6 @@ function hidePairing() {
 
 function formatPairingCode(code) {
   if (!code) return "--- - ---";
-  // Add space or hyphen to make it look clean (e.g. 123-456)
   if (code.length === 6) {
     return `${code.slice(0, 3)} - ${code.slice(3)}`;
   }
@@ -228,6 +240,16 @@ async function subscribeToData() {
   } catch (error) {
     console.error("Subscription failed:", error);
   }
+}
+
+// Translate English Waste Collection strings to German (just in case)
+function translateWasteState(stateStr) {
+  if (!stateStr) return "Keine Abholung geplant";
+  return stateStr
+    .replace(/tomorrow/gi, "morgen")
+    .replace(/today/gi, "heute")
+    .replace(/in (\d+) days/gi, "in $1 Tagen")
+    .replace(/in 1 day/gi, "in 1 Tag");
 }
 
 // Update UI Widgets
@@ -258,10 +280,12 @@ function updateDashboardUI() {
     const humidity = weather.attributes.humidity || 0;
     const condition = weather.state || "unknown";
     
+    const translatedCondition = weatherTranslations[condition.toLowerCase()] || condition;
+    
     document.getElementById("weather-temp").textContent = temp.toFixed(1);
     document.getElementById("weather-humidity").textContent = `${humidity}%`;
-    document.getElementById("weather-condition").textContent = condition;
-    document.getElementById("weather-state").textContent = condition.replace(/_/g, " ");
+    document.getElementById("weather-condition").textContent = translatedCondition;
+    document.getElementById("weather-state").textContent = translatedCondition;
     
     // Map condition to emoji
     const weatherIcons = {
@@ -289,19 +313,18 @@ function updateDashboardUI() {
     const carbonBar = document.getElementById("carbon-bar");
     const carbonRating = document.getElementById("co2-rating-val");
     
-    // Grid Carbon Rating & bar width
     const pct = Math.min(100, Math.max(5, (intensity / 500) * 100));
     if (carbonBar) carbonBar.style.width = `${pct}%`;
     
-    let rating = "Low";
+    let rating = "Niedrig";
     if (intensity > 250) {
-      rating = "High";
+      rating = "Hoch";
       if (carbonBar) carbonBar.style.background = "linear-gradient(to right, #10b981, #f59e0b, #ef4444)";
     } else if (intensity > 150) {
-      rating = "Moderate";
+      rating = "Mittel";
       if (carbonBar) carbonBar.style.background = "linear-gradient(to right, #10b981, #f59e0b)";
     } else {
-      rating = "Low";
+      rating = "Niedrig";
       if (carbonBar) carbonBar.style.background = "#10b981";
     }
     if (carbonRating) carbonRating.textContent = rating;
@@ -315,12 +338,12 @@ function updateDashboardUI() {
   // 4. Waste Collection
   const waste = stateCache["sensor.waste_collection_schedule_abfallkalender"];
   if (waste) {
-    const stateStr = waste.state || "No Collection scheduled";
-    document.getElementById("waste-val").textContent = stateStr;
+    const stateStr = waste.state || "Keine Abholung geplant";
+    const germanStateStr = translateWasteState(stateStr);
+    document.getElementById("waste-val").textContent = germanStateStr;
     
-    // Highlight if it's soon (e.g. today, tomorrow, or in 1-2 days)
     const lowerStr = stateStr.toLowerCase();
-    const isSoon = lowerStr.includes("today") || lowerStr.includes("tomorrow") || lowerStr.includes("in 1 day") || lowerStr.includes("in 2 days") || lowerStr.includes("in 3 days");
+    const isSoon = lowerStr.includes("today") || lowerStr.includes("heute") || lowerStr.includes("tomorrow") || lowerStr.includes("morgen") || lowerStr.includes("in 1 tag") || lowerStr.includes("in 2 tag") || lowerStr.includes("in 3 tag") || lowerStr.includes("in 1 day") || lowerStr.includes("in 2 days") || lowerStr.includes("in 3 days");
     const wasteCard = document.getElementById("card-waste");
     
     if (isSoon) {
@@ -357,12 +380,10 @@ async function refreshHistoryData() {
     console.log("History Data:", historyData);
     
     if (historyData) {
-      // Parse individual timelines
       solarHistory = parseHistorySeries(historyData["sensor.solaranlage_energy_power_2"]);
       forecastHistory = parseHistorySeries(historyData["sensor.power_production_now_2"]);
       gridHistory = parseHistorySeries(historyData["sensor.smartmeter_energy_power_curr"]);
       
-      // Update charts
       drawSolarChart();
       drawGridChart();
     }
@@ -398,7 +419,6 @@ function drawSolarChart() {
   const dataActual = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
   const dataForecast = forecastHistory.length > 0 ? forecastHistory : getMockHistory("forecast");
   
-  // Calculate margins & scale
   const w = svg.clientWidth || 500;
   const h = 220;
   
@@ -410,20 +430,16 @@ function drawSolarChart() {
   const chartW = w - padLeft - padRight;
   const chartH = h - padTop - padBottom;
   
-  // Get time bounds
   const now = Date.now();
   const oneDayAgo = now - 24 * 60 * 60 * 1000;
   
-  // Max value calculation for Scaling (W)
   const maxActual = Math.max(...dataActual.map(d => d.val), 0);
   const maxForecast = Math.max(...dataForecast.map(d => d.val), 0);
-  const maxVal = Math.max(1000, maxActual, maxForecast) * 1.1; // pad by 10%
+  const maxVal = Math.max(1000, maxActual, maxForecast) * 1.1;
   
-  // Draw Paths
   forecastPath.setAttribute("d", buildSVGPath(dataForecast, oneDayAgo, now, maxVal, padLeft, chartW, padTop, chartH));
   actualPath.setAttribute("d", buildSVGPath(dataActual, oneDayAgo, now, maxVal, padLeft, chartW, padTop, chartH));
   
-  // Update Y-Axis labels dynamically
   const maxKW = (maxVal / 1000).toFixed(1);
   const midKW = (maxVal / 2000).toFixed(1);
   
@@ -454,16 +470,14 @@ function drawGridChart() {
   const now = Date.now();
   const oneDayAgo = now - 24 * 60 * 60 * 1000;
   
-  // Max/min values for grid power (can be negative if exporting)
   const valsGrid = dataGrid.map(d => d.val);
   const valsSolar = dataSolar.map(d => d.val);
   const maxVal = Math.max(2000, ...valsGrid, ...valsSolar) * 1.1;
-  const minVal = Math.min(0, ...valsGrid); // Include negative grid feeds
+  const minVal = Math.min(0, ...valsGrid);
   
   gridPath.setAttribute("d", buildSVGPathRange(dataGrid, oneDayAgo, now, minVal, maxVal, padLeft, chartW, padTop, chartH));
   solarComparePath.setAttribute("d", buildSVGPathRange(dataSolar, oneDayAgo, now, minVal, maxVal, padLeft, chartW, padTop, chartH));
   
-  // Update Y labels
   const maxKW = (maxVal / 1000).toFixed(1);
   const midKW = ((maxVal + minVal) / 2000).toFixed(1);
   const minKW = (minVal / 1000).toFixed(1);
@@ -477,23 +491,19 @@ function drawGridChart() {
 function buildSVGPath(data, minTime, maxTime, maxVal, xOffset, width, yOffset, height) {
   if (data.length === 0) return "";
   
-  // Sort by time
   const sorted = [...data].sort((a, b) => a.time - b.time);
   
   let path = "";
   for (let i = 0; i < sorted.length; i++) {
     const point = sorted[i];
     
-    // Scale X between minTime and maxTime
     const timeDelta = maxTime - minTime;
     const xPct = timeDelta > 0 ? (point.time - minTime) / timeDelta : 0;
     const x = xOffset + xPct * width;
     
-    // Scale Y between 0 and maxVal (invert for SVG screen coordinates)
     const yPct = maxVal > 0 ? point.val / maxVal : 0;
     const y = yOffset + height - yPct * height;
     
-    // Clamp coordinates to chart box
     const clampedX = Math.max(xOffset, Math.min(xOffset + width, x));
     const clampedY = Math.max(yOffset, Math.min(yOffset + height, y));
     
@@ -538,7 +548,7 @@ function buildSVGPathRange(data, minTime, maxTime, minVal, maxVal, xOffset, widt
 
 // Beautiful Simulated Data for Demo and Offline modes
 function loadMockData() {
-  console.log("Loading mock data for visualization demo...");
+  console.log("Lade simulierte Demodaten für die Anzeige...");
   
   // Set current states
   stateCache["sensor.solar_share"] = { state: "78" };
@@ -549,7 +559,7 @@ function loadMockData() {
   };
   stateCache["sensor.co2_signal_co2_intensity"] = { state: "185.2" };
   stateCache["sensor.co2_signal_grid_fossil_fuel_percentage"] = { state: "15.4" };
-  stateCache["sensor.waste_collection_schedule_abfallkalender"] = { state: "Bioabfall tomorrow" };
+  stateCache["sensor.waste_collection_schedule_abfallkalender"] = { state: "Bioabfall morgen" };
   stateCache["sensor.m75_solarertrag_taglich"] = { state: "6.82" };
   stateCache["sensor.m75_solarertrag_wochentlich"] = { state: "48.15" };
   stateCache["sensor.m75_solarertrag_monatlich"] = { state: "192.40" };
@@ -573,7 +583,6 @@ function getMockHistory(type) {
     
     let val = 0;
     if (type === "actual") {
-      // Solar curve (bell curve peak at noon)
       if (hour >= 6 && hour <= 18) {
         val = 1500 * Math.sin(Math.PI * (hour - 6) / 12) + (Math.random() - 0.5) * 150;
       }
@@ -582,7 +591,6 @@ function getMockHistory(type) {
         val = 1420 * Math.sin(Math.PI * (hour - 6) / 12);
       }
     } else if (type === "grid") {
-      // Grid demand is higher morning and evening, drops when solar is high
       const baseLoad = 800 + (Math.random() - 0.5) * 200;
       const cookingPeak = (hour >= 7 && hour <= 9) || (hour >= 18 && hour <= 20) ? 1200 : 0;
       const solarOffset = (hour >= 8 && hour <= 17) ? 800 * Math.sin(Math.PI * (hour - 8) / 9) : 0;

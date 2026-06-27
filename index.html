@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="de" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,11 +24,11 @@
     </ul>
     <ul>
       <li>
-        <span id="conn-pill" class="badge badge-disconnected">Disconnected</span>
+        <span id="conn-pill" class="badge badge-disconnected">Nicht verbunden</span>
       </li>
       <li>
         <button id="reconnect-btn" class="outline secondary contrast" style="padding: 0.25rem 0.5rem; margin-bottom: 0;">
-          Reconnect
+          Neu verbinden
         </button>
       </li>
     </ul>
@@ -41,18 +41,18 @@
     <div id="pairing-section" class="card-pannel" style="display: none;">
       <article>
         <header>
-          <h3 class="pairing-title">🔒 Pairing Required</h3>
+          <h3 class="pairing-title">🔒 Kopplung erforderlich</h3>
         </header>
-        <p>To view your M75 Home Assistant dashboard, you need to authorize this application in your Home Assistant instance.</p>
+        <p>Um Ihr M75 Home Assistant Dashboard zu sehen, müssen Sie diese Anwendung in Ihrer Home Assistant Instanz autorisieren.</p>
         <div class="pairing-box">
-          <p class="pairing-label">Your pairing code:</p>
+          <p class="pairing-label">Ihr Kopplungscode:</p>
           <div id="pairing-code" class="pairing-code">--- - ---</div>
         </div>
         <p class="pairing-help">
-          Please check your Home Assistant notifications and approve the pairing request for <strong>M75 / Home</strong> using the code above.
+          Bitte überprüfen Sie Ihre Home Assistant Benachrichtigungen und bestätigen Sie die Kopplungsanfrage für <strong>M75 / Home</strong> mit dem obigen Code.
         </p>
         <footer>
-          <small>Waiting for owner approval... This page will update automatically.</small>
+          <small>Warten auf Freigabe des Eigentümers... Diese Seite aktualisiert sich automatisch.</small>
         </footer>
       </article>
     </div>
@@ -63,7 +63,7 @@
       <!-- Card 1: Solaranlage & Solar Share (Vertical Stack / Gauges) -->
       <article class="dash-card card-solar" id="card-solaranlage-share">
         <header>
-          <h5>Solar Power & Share</h5>
+          <h5>Solarleistung & Eigenverbrauch</h5>
         </header>
         <div class="solar-stats-container">
           <!-- Solar Share Gauge -->
@@ -71,7 +71,7 @@
             <div class="gauge" id="solar-share-gauge" style="--val: 0;">
               <div class="gauge-inner">
                 <span class="gauge-value" id="solar-share-val">0%</span>
-                <span class="gauge-label">Solar Share</span>
+                <span class="gauge-label">Solar-Anteil</span>
               </div>
             </div>
           </div>
@@ -82,7 +82,7 @@
               <span class="power-number" id="solar-power-val">0</span>
               <span class="power-unit">W</span>
             </div>
-            <div class="power-title">Solar Generation</div>
+            <div class="power-title">Solarerzeugung</div>
           </div>
         </div>
       </article>
@@ -90,7 +90,7 @@
       <!-- Card 2: Weather Forecast -->
       <article class="dash-card card-weather" id="card-weather">
         <header>
-          <h5>Weather Forecast</h5>
+          <h5>Wettervorhersage</h5>
         </header>
         <div class="weather-content">
           <div class="weather-main">
@@ -100,14 +100,14 @@
               <span class="weather-unit">°C</span>
             </div>
           </div>
-          <div class="weather-status-text" id="weather-state">Loading...</div>
+          <div class="weather-status-text" id="weather-state">Lade...</div>
           <div class="weather-details grid">
             <div class="weather-detail-item">
-              <span class="detail-label">Humidity</span>
+              <span class="detail-label">Feuchtigkeit</span>
               <span class="detail-value" id="weather-humidity">--%</span>
             </div>
             <div class="weather-detail-item">
-              <span class="detail-label">Condition</span>
+              <span class="detail-label">Bedingung</span>
               <span class="detail-value" id="weather-condition">--</span>
             </div>
           </div>
@@ -117,7 +117,7 @@
       <!-- Card 3: Grid Carbon Signal -->
       <article class="dash-card card-carbon" id="card-carbon">
         <header>
-          <h5>Grid Carbon Intensity</h5>
+          <h5>CO₂-Intensität des Stromnetzes</h5>
         </header>
         <div class="carbon-content">
           <div class="carbon-intensity">
@@ -129,11 +129,11 @@
           </div>
           <div class="carbon-metrics grid">
             <div>
-              <small>Fossil Fuel</small>
+              <small>Fossiler Strom</small>
               <div class="metric-val" id="co2-fossil-val">--%</div>
             </div>
             <div>
-              <small>Rating</small>
+              <small>Bewertung</small>
               <div class="metric-val" id="co2-rating-val">--</div>
             </div>
           </div>
@@ -148,7 +148,7 @@
         <div class="waste-content">
           <div class="waste-icon">🗑️</div>
           <div class="waste-status">
-            <div class="waste-next-event" id="waste-val">Checking...</div>
+            <div class="waste-next-event" id="waste-val">Prüfe...</div>
             <div class="waste-sub">Abfallkalender</div>
           </div>
         </div>
@@ -157,23 +157,23 @@
       <!-- Card 5: Solar Yield Stats -->
       <article class="dash-card card-yield" id="card-yield">
         <header>
-          <h5>Solar Yield Statistics</h5>
+          <h5>Solarertrag Statistiken</h5>
         </header>
         <div class="yield-grid">
           <div class="yield-item">
-            <span class="yield-title">Daily</span>
+            <span class="yield-title">Täglich</span>
             <span class="yield-val" id="yield-daily">-- kWh</span>
           </div>
           <div class="yield-item">
-            <span class="yield-title">Weekly</span>
+            <span class="yield-title">Wöchentlich</span>
             <span class="yield-val" id="yield-weekly">-- kWh</span>
           </div>
           <div class="yield-item">
-            <span class="yield-title">Monthly</span>
+            <span class="yield-title">Monatlich</span>
             <span class="yield-val" id="yield-monthly">-- kWh</span>
           </div>
           <div class="yield-item">
-            <span class="yield-title">Yearly</span>
+            <span class="yield-title">Jährlich</span>
             <span class="yield-val" id="yield-yearly">-- kWh</span>
           </div>
         </div>
@@ -182,7 +182,7 @@
       <!-- Card 6: Solar Generation History Chart -->
       <article class="dash-card card-chart" id="card-solar-chart">
         <header>
-          <h5>Solar Generation vs. Forecast</h5>
+          <h5>Solarerzeugung vs. Prognose</h5>
         </header>
         <div class="chart-container">
           <svg class="history-svg" id="solar-history-svg" viewBox="0 0 500 220">
@@ -206,13 +206,13 @@
             <text x="32" y="170" class="chart-label y-label">0</text>
             
             <!-- X-Axis labels -->
-            <text x="40" y="195" class="chart-label x-label">24h ago</text>
-            <text x="260" y="195" class="chart-label x-label">12h ago</text>
-            <text x="480" y="195" class="chart-label x-label text-end">Now</text>
+            <text x="40" y="195" class="chart-label x-label">vor 24 Std.</text>
+            <text x="260" y="195" class="chart-label x-label">vor 12 Std.</text>
+            <text x="480" y="195" class="chart-label x-label text-end">Jetzt</text>
           </svg>
           <div class="chart-legend">
-            <span class="legend-item"><span class="legend-dot forecast-dot"></span> Forecast (W)</span>
-            <span class="legend-item"><span class="legend-dot actual-dot"></span> Actual Generation (W)</span>
+            <span class="legend-item"><span class="legend-dot forecast-dot"></span> Prognose (W)</span>
+            <span class="legend-item"><span class="legend-dot actual-dot"></span> Erzeugung (W)</span>
           </div>
         </div>
       </article>
@@ -220,7 +220,7 @@
       <!-- Card 7: Energiebezug History Chart -->
       <article class="dash-card card-chart" id="card-grid-chart">
         <header>
-          <h5>Grid Current vs. Solar Power</h5>
+          <h5>Netzbezug vs. Solarleistung</h5>
         </header>
         <div class="chart-container">
           <svg class="history-svg" id="grid-history-svg" viewBox="0 0 500 220">
@@ -244,13 +244,13 @@
             <text x="32" y="170" class="chart-label y-label">0</text>
             
             <!-- X-Axis labels -->
-            <text x="40" y="195" class="chart-label x-label">24h ago</text>
-            <text x="260" y="195" class="chart-label x-label">12h ago</text>
-            <text x="480" y="195" class="chart-label x-label text-end">Now</text>
+            <text x="40" y="195" class="chart-label x-label">vor 24 Std.</text>
+            <text x="260" y="195" class="chart-label x-label">vor 12 Std.</text>
+            <text x="480" y="195" class="chart-label x-label text-end">Jetzt</text>
           </svg>
           <div class="chart-legend">
-            <span class="legend-item"><span class="legend-dot grid-dot"></span> Grid Power (W)</span>
-            <span class="legend-item"><span class="legend-dot actual-dot"></span> Solar Power (W)</span>
+            <span class="legend-item"><span class="legend-dot grid-dot"></span> Netzbezug (W)</span>
+            <span class="legend-item"><span class="legend-dot actual-dot"></span> Solarleistung (W)</span>
           </div>
         </div>
       </article>
