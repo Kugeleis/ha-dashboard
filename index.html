@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="M75 / Home Assistant Varco Dashboard">
+  <title>M75 / Home Dashboard</title>
+  
+  <!-- PicoCSS Stylesheet -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
+</head>
+<body>
+  
+  <!-- Navigation Header -->
+  <nav class="container-fluid">
+    <ul>
+      <li><h1 class="nav-title">M75 / Home</h1></li>
+    </ul>
+    <ul>
+      <li>
+        <span id="conn-pill" class="badge badge-disconnected">Disconnected</span>
+      </li>
+      <li>
+        <button id="reconnect-btn" class="outline secondary contrast" style="padding: 0.25rem 0.5rem; margin-bottom: 0;">
+          Reconnect
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="container">
+    
+    <!-- Pairing Prompt Area (Visible when auth needed) -->
+    <div id="pairing-section" class="card-pannel" style="display: none;">
+      <article>
+        <header>
+          <h3 class="pairing-title">🔒 Pairing Required</h3>
+        </header>
+        <p>To view your M75 Home Assistant dashboard, you need to authorize this application in your Home Assistant instance.</p>
+        <div class="pairing-box">
+          <p class="pairing-label">Your pairing code:</p>
+          <div id="pairing-code" class="pairing-code">--- - ---</div>
+        </div>
+        <p class="pairing-help">
+          Please check your Home Assistant notifications and approve the pairing request for <strong>M75 / Home</strong> using the code above.
+        </p>
+        <footer>
+          <small>Waiting for owner approval... This page will update automatically.</small>
+        </footer>
+      </article>
+    </div>
+
+    <!-- Dashboard Content Grid -->
+    <div id="dashboard-grid" class="dashboard-grid">
+      
+      <!-- Card 1: Solaranlage & Solar Share (Vertical Stack / Gauges) -->
+      <article class="dash-card card-solar" id="card-solaranlage-share">
+        <header>
+          <h5>Solar Power & Share</h5>
+        </header>
+        <div class="solar-stats-container">
+          <!-- Solar Share Gauge -->
+          <div class="gauge-wrapper">
+            <div class="gauge" id="solar-share-gauge" style="--val: 0;">
+              <div class="gauge-inner">
+                <span class="gauge-value" id="solar-share-val">0%</span>
+                <span class="gauge-label">Solar Share</span>
+              </div>
+            </div>
+          </div>
+          <!-- Current Solar Power -->
+          <div class="power-display">
+            <div class="power-icon">☀️</div>
+            <div class="power-value-wrapper">
+              <span class="power-number" id="solar-power-val">0</span>
+              <span class="power-unit">W</span>
+            </div>
+            <div class="power-title">Solar Generation</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 2: Weather Forecast -->
+      <article class="dash-card card-weather" id="card-weather">
+        <header>
+          <h5>Weather Forecast</h5>
+        </header>
+        <div class="weather-content">
+          <div class="weather-main">
+            <div class="weather-icon-large" id="weather-icon">☁️</div>
+            <div class="weather-temp-wrapper">
+              <span class="weather-temp" id="weather-temp">--.-</span>
+              <span class="weather-unit">°C</span>
+            </div>
+          </div>
+          <div class="weather-status-text" id="weather-state">Loading...</div>
+          <div class="weather-details grid">
+            <div class="weather-detail-item">
+              <span class="detail-label">Humidity</span>
+              <span class="detail-value" id="weather-humidity">--%</span>
+            </div>
+            <div class="weather-detail-item">
+              <span class="detail-label">Condition</span>
+              <span class="detail-value" id="weather-condition">--</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 3: Grid Carbon Signal -->
+      <article class="dash-card card-carbon" id="card-carbon">
+        <header>
+          <h5>Grid Carbon Intensity</h5>
+        </header>
+        <div class="carbon-content">
+          <div class="carbon-intensity">
+            <span class="carbon-val" id="co2-intensity-val">--</span>
+            <span class="carbon-unit">gCO₂eq/kWh</span>
+          </div>
+          <div class="carbon-bar-container">
+            <div class="carbon-bar" id="carbon-bar" style="width: 0%;"></div>
+          </div>
+          <div class="carbon-metrics grid">
+            <div>
+              <small>Fossil Fuel</small>
+              <div class="metric-val" id="co2-fossil-val">--%</div>
+            </div>
+            <div>
+              <small>Rating</small>
+              <div class="metric-val" id="co2-rating-val">--</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 4: Stadtreinigung (Waste Collection) -->
+      <article class="dash-card card-waste" id="card-waste">
+        <header>
+          <h5>Stadtreinigung</h5>
+        </header>
+        <div class="waste-content">
+          <div class="waste-icon">🗑️</div>
+          <div class="waste-status">
+            <div class="waste-next-event" id="waste-val">Checking...</div>
+            <div class="waste-sub">Abfallkalender</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 5: Solar Yield Stats -->
+      <article class="dash-card card-yield" id="card-yield">
+        <header>
+          <h5>Solar Yield Statistics</h5>
+        </header>
+        <div class="yield-grid">
+          <div class="yield-item">
+            <span class="yield-title">Daily</span>
+            <span class="yield-val" id="yield-daily">-- kWh</span>
+          </div>
+          <div class="yield-item">
+            <span class="yield-title">Weekly</span>
+            <span class="yield-val" id="yield-weekly">-- kWh</span>
+          </div>
+          <div class="yield-item">
+            <span class="yield-title">Monthly</span>
+            <span class="yield-val" id="yield-monthly">-- kWh</span>
+          </div>
+          <div class="yield-item">
+            <span class="yield-title">Yearly</span>
+            <span class="yield-val" id="yield-yearly">-- kWh</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 6: Solar Generation History Chart -->
+      <article class="dash-card card-chart" id="card-solar-chart">
+        <header>
+          <h5>Solar Generation vs. Forecast</h5>
+        </header>
+        <div class="chart-container">
+          <svg class="history-svg" id="solar-history-svg" viewBox="0 0 500 220">
+            <!-- Grid Lines -->
+            <line x1="40" y1="20" x2="480" y2="20" class="chart-grid-line" />
+            <line x1="40" y1="70" x2="480" y2="70" class="chart-grid-line" />
+            <line x1="40" y1="120" x2="480" y2="120" class="chart-grid-line" />
+            <line x1="40" y1="170" x2="480" y2="170" class="chart-grid-line" />
+            
+            <!-- Axis lines -->
+            <line x1="40" y1="170" x2="480" y2="170" class="chart-axis" />
+            <line x1="40" y1="20" x2="40" y2="170" class="chart-axis" />
+            
+            <!-- Paths will be injected here -->
+            <path id="chart-solar-forecast-path" class="chart-line forecast-line" d="" />
+            <path id="chart-solar-actual-path" class="chart-line actual-line" d="" />
+            
+            <!-- Y-Axis labels -->
+            <text x="32" y="25" class="chart-label y-label">2kW</text>
+            <text x="32" y="95" class="chart-label y-label">1kW</text>
+            <text x="32" y="170" class="chart-label y-label">0</text>
+            
+            <!-- X-Axis labels -->
+            <text x="40" y="195" class="chart-label x-label">24h ago</text>
+            <text x="260" y="195" class="chart-label x-label">12h ago</text>
+            <text x="480" y="195" class="chart-label x-label text-end">Now</text>
+          </svg>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot forecast-dot"></span> Forecast (W)</span>
+            <span class="legend-item"><span class="legend-dot actual-dot"></span> Actual Generation (W)</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 7: Energiebezug History Chart -->
+      <article class="dash-card card-chart" id="card-grid-chart">
+        <header>
+          <h5>Grid Current vs. Solar Power</h5>
+        </header>
+        <div class="chart-container">
+          <svg class="history-svg" id="grid-history-svg" viewBox="0 0 500 220">
+            <!-- Grid Lines -->
+            <line x1="40" y1="20" x2="480" y2="20" class="chart-grid-line" />
+            <line x1="40" y1="70" x2="480" y2="70" class="chart-grid-line" />
+            <line x1="40" y1="120" x2="480" y2="120" class="chart-grid-line" />
+            <line x1="40" y1="170" x2="480" y2="170" class="chart-grid-line" />
+            
+            <!-- Axis lines -->
+            <line x1="40" y1="170" x2="480" y2="170" class="chart-axis" />
+            <line x1="40" y1="20" x2="40" y2="170" class="chart-axis" />
+            
+            <!-- Paths will be injected here -->
+            <path id="chart-smartmeter-path" class="chart-line smartmeter-line" d="" />
+            <path id="chart-solar-compare-path" class="chart-line solar-compare-line" d="" />
+            
+            <!-- Y-Axis labels -->
+            <text x="32" y="25" class="chart-label y-label">4kW</text>
+            <text x="32" y="95" class="chart-label y-label">2kW</text>
+            <text x="32" y="170" class="chart-label y-label">0</text>
+            
+            <!-- X-Axis labels -->
+            <text x="40" y="195" class="chart-label x-label">24h ago</text>
+            <text x="260" y="195" class="chart-label x-label">12h ago</text>
+            <text x="480" y="195" class="chart-label x-label text-end">Now</text>
+          </svg>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot grid-dot"></span> Grid Power (W)</span>
+            <span class="legend-item"><span class="legend-dot actual-dot"></span> Solar Power (W)</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <!-- App Script (ES Module) -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

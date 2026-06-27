@@ -1,0 +1,578 @@
+/*
+  Custom Design System extending PicoCSS
+  For M75 / Home Assistant Dashboard
+*/
+
+:root {
+  --primary-hue: 205;
+  --solar-hue: 45;
+  --grid-hue: 175;
+  --carbon-hue: 0;
+  
+  --solar-color: hsl(var(--solar-hue), 100%, 55%);
+  --grid-color: hsl(var(--grid-hue), 75%, 50%);
+  --forecast-color: hsl(200, 85%, 60%);
+  
+  --bg-card: rgba(30, 41, 59, 0.7);
+  --border-radius: 12px;
+  --transition-speed: 0.3s;
+}
+
+body {
+  background: radial-gradient(circle at top right, #1e293b, #0f172a);
+  min-height: 100vh;
+  margin: 0;
+  padding-bottom: 2rem;
+  color: #f1f5f9;
+}
+
+nav.container-fluid {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 2rem;
+  padding: 0.75rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #fff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Badge / Pills */
+.badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all var(--transition-speed) ease;
+}
+
+.badge-disconnected {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-connecting {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  animation: pulse 1.5s infinite alternate;
+}
+
+.badge-connected {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+@keyframes pulse {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 1200px) {
+  /* Let's make charts take full width or 2 columns if screen is wide */
+  .card-chart {
+    grid-column: span 2;
+  }
+}
+
+/* Base Card Style */
+.dash-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius);
+  margin-bottom: 0; /* Override Pico CSS margin */
+  transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, border-color var(--transition-speed) ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dash-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.dash-card header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.dash-card header h5 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #94a3b8;
+}
+
+/* Card 1: Solar stats & Gauge layout */
+.solar-stats-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 1.5rem 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Circular Gauge */
+.gauge-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gauge {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--solar-color) calc(var(--val) * 1%),
+    rgba(255, 255, 255, 0.1) 0deg
+  );
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.5s ease;
+}
+
+.gauge::before {
+  content: "";
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background: #151f32;
+  border-radius: 50%;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.gauge-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.gauge-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.gauge-label {
+  font-size: 0.65rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.2rem;
+}
+
+/* Current Solar Power Stats */
+.power-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.power-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.25rem;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.3));
+}
+
+.power-value-wrapper {
+  display: flex;
+  align-items: baseline;
+}
+
+.power-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.power-unit {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--solar-color);
+  margin-left: 0.15rem;
+}
+
+.power-title {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+/* Card 2: Weather CSS */
+.weather-content {
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+}
+
+.weather-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.weather-icon-large {
+  font-size: 3rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.1));
+}
+
+.weather-temp-wrapper {
+  display: flex;
+  align-items: baseline;
+}
+
+.weather-temp {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.weather-status-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #cbd5e1;
+  margin-bottom: 1.25rem;
+}
+
+.weather-details {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}
+
+.weather-detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.detail-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.detail-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+/* Card 3: Carbon Signal */
+.carbon-content {
+  padding: 1.5rem;
+}
+
+.carbon-intensity {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.carbon-val {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.carbon-unit {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
+.carbon-bar-container {
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.carbon-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);
+  transition: width 0.5s ease;
+}
+
+.carbon-metrics {
+  text-align: center;
+}
+
+.metric-val {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+/* Card 4: Stadtreinigung (Waste Collection) */
+.waste-content {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.waste-icon {
+  font-size: 2.5rem;
+  background: rgba(255,255,255,0.05);
+  width: 60px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: all var(--transition-speed);
+}
+
+.dash-card:hover .waste-icon {
+  background: rgba(255,255,255,0.1);
+  transform: rotate(-10deg);
+}
+
+.waste-status {
+  flex-grow: 1;
+}
+
+.waste-next-event {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.waste-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.waste-alert {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(239, 68, 68, 0.05));
+}
+.waste-alert .waste-icon {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+.waste-alert .waste-next-event {
+  color: #f87171;
+}
+
+/* Card 5: Yield Stats */
+.yield-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.05);
+  padding: 0;
+}
+
+.yield-item {
+  padding: 1.25rem;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.yield-title {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+.yield-val {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Card 6 & 7: History Charts (SVG) */
+.chart-container {
+  padding: 1.25rem;
+}
+
+.history-svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-grid-line {
+  stroke: rgba(255, 255, 255, 0.04);
+  stroke-width: 1;
+}
+
+.chart-axis {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 1.5;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: d 0.5s ease-in-out;
+}
+
+/* Specific Line Styles */
+.forecast-line {
+  stroke: var(--forecast-color);
+  stroke-dasharray: 4 4;
+}
+
+.actual-line {
+  stroke: var(--solar-color);
+  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.2));
+}
+
+.smartmeter-line {
+  stroke: var(--grid-color);
+  filter: drop-shadow(0 2px 4px rgba(23, 162, 184, 0.2));
+}
+
+.solar-compare-line {
+  stroke: var(--solar-color);
+  opacity: 0.7;
+}
+
+/* Chart Labels */
+.chart-label {
+  fill: #64748b;
+  font-size: 10px;
+  font-family: system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+.y-label {
+  text-anchor: end;
+}
+
+.x-label {
+  text-anchor: middle;
+}
+
+.text-end {
+  text-anchor: end;
+}
+
+/* Legend */
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  color: #94a3b8;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  display: inline-block;
+}
+
+.forecast-dot {
+  border: 1px dashed var(--forecast-color);
+  background-color: transparent;
+}
+
+.actual-dot {
+  background-color: var(--solar-color);
+}
+
+.grid-dot {
+  background-color: var(--grid-color);
+}
+
+/* Pairing Section Layout */
+.pairing-box {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.pairing-title {
+  margin: 0;
+  color: #f59e0b;
+}
+
+.pairing-label {
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.pairing-code {
+  font-family: monospace;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.1em;
+}
+
+.pairing-help {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
