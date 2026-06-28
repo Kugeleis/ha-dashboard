@@ -1,4 +1,4 @@
-import { createVarcoConsumerClient } from "https://esm.sh/@varco/client@0.6.0";
+import { createVarcoConsumerClient, consumerIdentityFromPrivateKey } from "https://esm.sh/@varco/client@0.6.0";
 
 // Define the exact Lovelace manifest for permissions request
 const manifest = {
@@ -126,6 +126,10 @@ const manifest = {
 const AUTHORITY_ID = "SFxZ6jlLjm44y4usVeKWWZ8avrh_xWeFe28o9RGlZaw";
 const BRIDGE_URL = "wss://varco-bridge.andreabaccega.com";
 
+// Hardcoded private key for public access without pairing
+const PUBLIC_DASHBOARD_PRIVATE_KEY = "7993bf7850190169a9a8ac7b29dc24764444bae4bb2342018b01121bfa2b87be";
+const sharedIdentity = consumerIdentityFromPrivateKey(PUBLIC_DASHBOARD_PRIVATE_KEY);
+
 // State cache for entities
 const stateCache = {};
 let client = null;
@@ -163,6 +167,7 @@ async function init() {
       authorityId: AUTHORITY_ID,
       bridgeUrl: BRIDGE_URL,
       manifest,
+      identity: sharedIdentity,
       reconnect: true,
       onTransportStatus: (status) => {
         console.log("Varco Status Update:", status);
@@ -196,8 +201,6 @@ async function init() {
   } catch (error) {
     console.error("Connection failed:", error);
     updateConnectionStatus({ mode: "disconnected", detail: error.message });
-    // Use simulated mock data if connection fails, so user has a working demo
-    loadMockData();
   }
 }
 
@@ -519,8 +522,8 @@ function drawSolarChart() {
   const actualPath = document.getElementById("chart-solar-actual-path");
   if (!svg || !forecastPath || !actualPath) return;
 
-  const dataActual = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
-  const dataForecast = forecastHistory.length > 0 ? forecastHistory : getMockHistory("forecast");
+  const dataActual = solarHistory;
+  const dataForecast = forecastHistory;
   
   const w = 500;
   const h = 220;
@@ -556,8 +559,8 @@ function drawGridChart() {
   const solarComparePath = document.getElementById("chart-solar-compare-path");
   if (!svg || !gridPath || !solarComparePath) return;
 
-  const dataGrid = gridHistory.length > 0 ? gridHistory : getMockHistory("grid");
-  const dataSolar = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
+  const dataGrid = gridHistory;
+  const dataSolar = solarHistory;
   
   const w = 500;
   const h = 220;
@@ -716,7 +719,7 @@ function drawSolarYield10DaysChart() {
   const labelsGroup = document.getElementById("labels-group");
   if (!svg || !barsGroup || !labelsGroup) return;
 
-  const dataYield = solarYield10DaysHistory.length > 0 ? solarYield10DaysHistory : getMockHistory("yield");
+  const dataYield = solarYield10DaysHistory;
   const dailyData = getDailyYieldValues(dataYield);
 
   const w = 500;
@@ -798,93 +801,6 @@ function drawSolarYield10DaysChart() {
   const midLabel = document.getElementById("yield-10days-y-mid");
   if (maxLabel) maxLabel.textContent = `${maxVal.toFixed(1)} kWh`;
   if (midLabel) midLabel.textContent = `${(maxVal / 2).toFixed(1)} kWh`;
-}
-
-// Beautiful Simulated Data for Demo and Offline modes
-function loadMockData() {
-  console.log("Lade simulierte Demodaten für die Anzeige...");
-  
-  // Set current states
-  stateCache["sensor.solar_share"] = { state: "78" };
-  stateCache["sensor.solaranlage_energy_power_2"] = { state: "1350" };
-  stateCache["weather.forecast_m75"] = {
-    state: "partlycloudy",
-    attributes: { temperature: 31.4, humidity: 42 }
-  };
-  stateCache["sensor.co2_signal_co2_intensity"] = { state: "185.2" };
-  stateCache["sensor.co2_signal_grid_fossil_fuel_percentage"] = { state: "15.4" };
-  stateCache["sensor.altpapier_9449"] = { state: "8" };
-  stateCache["sensor.bio_9449"] = { state: "1" };
-  stateCache["sensor.gelbe_tonne_9449"] = { state: "14" };
-  stateCache["sensor.restabfall_9449"] = { state: "3" };
-  stateCache["sensor.m75_solarertrag_taglich"] = { state: "6.82" };
-  stateCache["sensor.m75_solarertrag_wochentlich"] = { state: "48.15" };
-  stateCache["sensor.m75_solarertrag_monatlich"] = { state: "192.40" };
-  stateCache["sensor.m75_solarertrag_jahrlich"] = { state: "2480.12" };
-  stateCache["sensor.solaranlage_energy_today_2"] = { state: "6.85" };
-  
-  updateDashboardUI();
-  
-  // Render mock charts
-  drawSolarChart();
-  drawGridChart();
-  drawSolarYield10DaysChart();
-}
-
-function getMockHistory(type) {
-  const points = type === "yield" ? 10 * 24 : 24; // 10 days of hourly points or 24 hours
-  const list = [];
-  const now = Date.now();
-  
-  if (type === "yield") {
-    let currentDailyYield = 0;
-    for (let i = points; i >= 0; i--) {
-      const time = now - i * 60 * 60 * 1000;
-      const date = new Date(time);
-      const hour = date.getHours();
-      
-      // Reset at midnight
-      if (hour === 0) {
-        currentDailyYield = 0;
-      } else if (hour >= 6 && hour <= 18) {
-        // Let's add some solar yield
-        // Total daily yield can be between 3 and 15 kWh depending on day
-        const daySeed = date.getDate();
-        const maxDaily = 1 + (daySeed % 3) * 0.5 + Math.random(); // range 1 to 3 kWh
-        
-        // Accumulate hourly yield using sine
-        const hourlyIncrease = maxDaily * (Math.PI / 12) * Math.sin(Math.PI * (hour - 6) / 12) / 2;
-        currentDailyYield += Math.max(0, hourlyIncrease);
-      }
-      
-      list.push({ time, val: parseFloat(currentDailyYield.toFixed(3)) });
-    }
-    return list;
-  }
-  
-  for (let i = points; i >= 0; i--) {
-    const time = now - i * 60 * 60 * 1000;
-    const hour = new Date(time).getHours();
-    
-    let val = 0;
-    if (type === "actual") {
-      if (hour >= 6 && hour <= 18) {
-        val = 1500 * Math.sin(Math.PI * (hour - 6) / 12) + (Math.random() - 0.5) * 150;
-      }
-    } else if (type === "forecast") {
-      if (hour >= 6 && hour <= 18) {
-        val = 1420 * Math.sin(Math.PI * (hour - 6) / 12);
-      }
-    } else if (type === "grid") {
-      const baseLoad = 800 + (Math.random() - 0.5) * 200;
-      const cookingPeak = (hour >= 7 && hour <= 9) || (hour >= 18 && hour <= 20) ? 1200 : 0;
-      const solarOffset = (hour >= 8 && hour <= 17) ? 800 * Math.sin(Math.PI * (hour - 8) / 9) : 0;
-      val = baseLoad + cookingPeak - solarOffset;
-    }
-    
-    list.push({ time, val: Math.max(-500, Math.round(val)) });
-  }
-  return list;
 }
 
 // Start application
