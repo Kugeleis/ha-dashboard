@@ -133,6 +133,7 @@ const sharedIdentity = consumerIdentityFromPrivateKey(PUBLIC_DASHBOARD_PRIVATE_K
 // State cache for entities
 const stateCache = {};
 let client = null;
+let historyInterval = null;
 
 // DOM Elements
 const connPill = document.getElementById("conn-pill");
@@ -157,7 +158,9 @@ const weatherTranslations = {
 
 // Initialize application
 async function init() {
-  setupListeners();
+  if (historyInterval) {
+    clearInterval(historyInterval);
+  }
   
   // Try to pair and connect
   try {
@@ -196,7 +199,7 @@ async function init() {
     refreshHistoryData();
     
     // Refresh history every 5 minutes
-    setInterval(refreshHistoryData, 5 * 60 * 1000);
+    historyInterval = setInterval(refreshHistoryData, 5 * 60 * 1000);
     
   } catch (error) {
     console.error("Connection failed:", error);
@@ -206,13 +209,16 @@ async function init() {
 
 function setupListeners() {
   reconnectBtn.addEventListener("click", async () => {
+    reconnectBtn.disabled = true;
     if (client) {
       try {
         updateConnectionStatus({ mode: "connecting", detail: "Verbindung wird neu aufgebaut..." });
-        await client.close();
+        // Don't await close, as it might hang if the connection is completely dead
+        client.close().catch(() => {});
       } catch (e) {}
     }
-    init();
+    await init();
+    reconnectBtn.disabled = false;
   });
   
   // Redraw charts on resize to keep SVG responsive
@@ -804,4 +810,5 @@ function drawSolarYield10DaysChart() {
 }
 
 // Start application
+setupListeners();
 init();
