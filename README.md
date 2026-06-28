@@ -13,16 +13,23 @@ Once hosted, you will be able to access the live dashboard at:
 
 ## 🔒 Security & Connection (Varco)
 
-Instead of using long-lived Home Assistant access tokens or exposing your Home Assistant instance to the public internet, this dashboard uses **Varco**:
-- Communications are **End-to-End Encrypted (E2EE)**.
-- Establishing connections uses peer-to-peer (**WebRTC**) when available, falling back to a secure bridge relay.
-- Access control policy, approvals, and logs remain in your Home Assistant instance.
+Instead of using long-lived Home Assistant access tokens or exposing your Home Assistant instance to the public internet, this dashboard uses **Varco** for **End-to-End Encrypted (E2EE)** communication over WebRTC and secure relays.
 
-### Connection & Pairing Steps
-1. Open the hosted dashboard on GitHub Pages.
-2. If it is your first time connecting, you will see a **Pairing Code** (e.g., `123 - 456`).
-3. Open your Home Assistant instance, check the notification tray, and approve the request for **M75 / Home** using the pairing code.
-4. Once authorized, the dashboard will load the live entity states and historical power graphs.
+### Public Dashboard Mode
+This dashboard is configured for **public access without per-device pairing prompts**. To achieve this, it uses a **shared, hardcoded Consumer Identity (Private Key)** in `app.js`.
+
+Because the dashboard manifest only requests `read_entities` and no actionable permissions, this key functions as a safe, read-only token specifically scoped to the dashboard's needs.
+
+### Setup & Initial Pairing Steps
+When deploying this dashboard for your own Home Assistant instance, you need to pair the shared key **once**:
+
+1. **Set your Authority ID**: In `app.js`, update `const AUTHORITY_ID` with the Authority ID from your Home Assistant Varco integration.
+2. **(Optional) Generate a new shared key**: The repository includes a pre-generated shared key (`PUBLIC_DASHBOARD_PRIVATE_KEY` in `app.js`). If you want to generate your own, you can run `node -e 'import("@noble/hashes/utils").then(u => console.log(u.bytesToHex(u.randomBytes(32))))'` and replace the key in `app.js`.
+3. **Open the Dashboard**: Visit your hosted dashboard URL (or open it locally).
+4. **Pair Once**: The dashboard will display a **Pairing Code** (e.g., `123 - 456`) the very first time.
+5. **Approve in Home Assistant**: Open your Home Assistant, check the notification tray, and approve the request for **M75 / Home** matching the pairing code.
+
+**That's it!** Once approved, the shared key is authorized. Anyone visiting the public dashboard URL will now immediately see the live entity states and history graphs without being prompted for a pairing code, as their browser will utilize the pre-approved shared identity.
 
 ## 📊 Dashboard Widgets
 
