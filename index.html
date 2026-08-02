@@ -3,32 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="M75 / Home Assistant Varco Dashboard">
-  <title>M75 / Home Dashboard</title>
-  
+  <meta name="description" content="PVOutput Solar Dashboard - Live-Erzeugung & Statistiken">
+  <title>Solaranlage Dashboard | PVOutput</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <!-- PicoCSS Stylesheet -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-  
+
+  <!-- Chart.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="styles.css">
-  
+
   <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
 </head>
 <body>
-  
+
   <!-- Navigation Header -->
-  <nav class="container-fluid">
+  <nav class="container-fluid nav-bar">
     <ul>
-      <li><h1 class="nav-title">M75 / Home</h1></li>
+      <li class="nav-brand">
+        <span class="sun-logo">☀️</span>
+        <div>
+          <h1 class="nav-title" id="system-title">Solaranlage Dashboard</h1>
+          <small class="nav-subtitle" id="system-subtitle">PVOutput.org • System ID: <span id="nav-system-id">--</span></small>
+        </div>
+      </li>
     </ul>
     <ul>
+      <li><span id="conn-pill" class="badge badge-connecting">Initialisiere...</span></li>
       <li>
-        <span id="conn-pill" class="badge badge-disconnected">Nicht verbunden</span>
+        <button id="refresh-btn" class="outline contrast nav-btn" title="Daten jetzt aktualisieren">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Aktualisieren</span>
+        </button>
       </li>
       <li>
-        <button id="reconnect-btn" class="outline secondary contrast" style="padding: 0.25rem 0.5rem; margin-bottom: 0;">
-          Neu verbinden
+        <button id="settings-btn" class="outline secondary nav-btn" title="Einstellungen öffnen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Einstellungen</span>
         </button>
       </li>
     </ul>
@@ -36,284 +55,290 @@
 
   <!-- Main Container -->
   <main class="container">
-    
-    <!-- Pairing Prompt Area (Visible when auth needed) -->
-    <div id="pairing-section" class="card-pannel" style="display: none;">
-      <article>
-        <header>
-          <h3 class="pairing-title">🔒 Kopplung erforderlich</h3>
-        </header>
-        <p>Um Ihr M75 Home Assistant Dashboard zu sehen, müssen Sie diese Anwendung in Ihrer Home Assistant Instanz autorisieren.</p>
-        <div class="pairing-box">
-          <p class="pairing-label">Ihr Kopplungscode:</p>
-          <div id="pairing-code" class="pairing-code">--- - ---</div>
-        </div>
-        <p class="pairing-help">
-          Bitte überprüfen Sie Ihre Home Assistant Benachrichtigungen und bestätigen Sie die Kopplungsanfrage für <strong>M75 / Home</strong> mit dem obigen Code.
-        </p>
-        <footer>
-          <small>Warten auf Freigabe des Eigentümers... Diese Seite aktualisiert sich automatisch.</small>
-        </footer>
-      </article>
+
+    <!-- Status Banner / Toast -->
+    <div id="status-banner" class="status-banner" style="display: none;">
+      <span id="status-banner-text">Daten werden geladen...</span>
     </div>
 
-    <!-- Dashboard Content Grid -->
-    <div id="dashboard-grid" class="dashboard-grid">
-      
-      <!-- Card 1: Solaranlage & Solar Share (Vertical Stack / Gauges) -->
-      <article class="dash-card card-solar" id="card-solaranlage-share">
-        <header>
-          <h5>Solarleistung & Eigenverbrauch</h5>
+    <!-- Top Grid: Main Live Card & Key Summary Stat Tiles -->
+    <div class="top-dashboard-grid">
+
+      <!-- Live Status & Gauge Card -->
+      <article class="dash-card card-live">
+        <header class="card-header">
+          <div class="header-title">
+            <span class="header-icon">⚡</span>
+            <h3>Aktuelle Solarleistung</h3>
+          </div>
+          <small class="live-timestamp" id="live-time">Stand: --:-- Uhr</small>
         </header>
-        <div class="solar-stats-container">
-          <!-- Solar Share Gauge -->
-          <div class="gauge-wrapper">
-            <div class="gauge" id="solar-share-gauge" style="--val: 0;">
-              <div class="gauge-inner">
-                <span class="gauge-value" id="solar-share-val">0%</span>
-                <span class="gauge-label">Solar-Anteil</span>
+
+        <div class="live-card-body">
+          <!-- Main Hero Power Display -->
+          <div class="power-hero">
+            <div class="power-main-val">
+              <span class="hero-number" id="live-power-val">0</span>
+              <span class="hero-unit">Watt</span>
+            </div>
+            <div class="power-sub-info">
+              <span class="sub-label">Tagesertrag bisher:</span>
+              <strong class="sub-val" id="live-today-kwh">0,00 kWh</strong>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Bar -->
+          <div class="quick-metrics-grid">
+            <div class="quick-metric-item">
+              <span class="metric-icon">📈</span>
+              <div class="metric-text">
+                <span class="metric-label">Spitze</span>
+                <span class="metric-value" id="live-peak-power">-- W</span>
+                <small class="metric-sub" id="live-peak-time">--:-- Uhr</small>
+              </div>
+            </div>
+
+            <div class="quick-metric-item">
+              <span class="metric-icon">⚡</span>
+              <div class="metric-text">
+                <span class="metric-label">Wirkungsgrad</span>
+                <span class="metric-value" id="live-efficiency">-- kWh/kW</span>
+                <small class="metric-sub">Spezifisch</small>
+              </div>
+            </div>
+
+            <div class="quick-metric-item">
+              <span class="metric-icon">🌡️</span>
+              <div class="metric-text">
+                <span class="metric-label">Temperatur</span>
+                <span class="metric-value" id="live-temp">-- °C</span>
+                <small class="metric-sub">Modul Temp.</small>
+              </div>
+            </div>
+
+            <div class="quick-metric-item">
+              <span class="metric-icon">🔆</span>
+              <div class="metric-text">
+                <span class="metric-label">Wetter</span>
+                <span class="metric-value" id="live-condition">--</span>
+                <small class="metric-sub">PVOutput</small>
               </div>
             </div>
           </div>
-          <!-- Current Solar Power -->
-          <div class="power-display">
-            <div class="power-icon">☀️</div>
-            <div class="power-value-wrapper">
-              <span class="power-number" id="solar-power-val">0</span>
-              <span class="power-unit">W</span>
-            </div>
-            <div class="power-title">Solarerzeugung</div>
-          </div>
         </div>
       </article>
 
-      <!-- Card 2: Weather Forecast -->
-      <article class="dash-card card-weather" id="card-weather">
-        <header>
-          <h5>Wettervorhersage</h5>
-        </header>
-        <div class="weather-content">
-          <div class="weather-main">
-            <div class="weather-icon-large" id="weather-icon">☁️</div>
-            <div class="weather-temp-wrapper">
-              <span class="weather-temp" id="weather-temp">--.-</span>
-              <span class="weather-unit">°C</span>
+      <!-- Key Ertrags-Kacheln (Daily, Weekly, Monthly, Yearly) -->
+      <div class="yield-summary-stack">
+        <article class="dash-card yield-tile">
+          <div class="tile-icon icon-day">📅</div>
+          <div class="tile-content">
+            <span class="tile-label">Heute (Tagesertrag)</span>
+            <div class="tile-value-group">
+              <span class="tile-value" id="summary-yield-day">--</span>
+              <span class="tile-unit" id="summary-yield-day-unit">kWh</span>
             </div>
           </div>
-          <div class="weather-status-text" id="weather-state">Lade...</div>
-          <div class="weather-details grid">
-            <div class="weather-detail-item">
-              <span class="detail-label">Feuchtigkeit</span>
-              <span class="detail-value" id="weather-humidity">--%</span>
-            </div>
-            <div class="weather-detail-item">
-              <span class="detail-label">Bedingung</span>
-              <span class="detail-value" id="weather-condition">--</span>
-            </div>
-          </div>
-        </div>
-      </article>
+        </article>
 
-      <!-- Card 3: Grid Carbon Signal -->
-      <article class="dash-card card-carbon" id="card-carbon">
-        <header>
-          <h5>CO₂-Intensität des Stromnetzes</h5>
-        </header>
-        <div class="carbon-content">
-          <div class="carbon-intensity">
-            <span class="carbon-val" id="co2-intensity-val">--</span>
-            <span class="carbon-unit">gCO₂eq/kWh</span>
-          </div>
-          <div class="carbon-bar-container">
-            <div class="carbon-bar" id="carbon-bar" style="width: 0%;"></div>
-          </div>
-          <div class="carbon-metrics grid">
-            <div>
-              <small>Fossiler Strom</small>
-              <div class="metric-val" id="co2-fossil-val">--%</div>
-            </div>
-            <div>
-              <small>Bewertung</small>
-              <div class="metric-val" id="co2-rating-val">--</div>
+        <article class="dash-card yield-tile">
+          <div class="tile-icon icon-week">📆</div>
+          <div class="tile-content">
+            <span class="tile-label">Diese Woche</span>
+            <div class="tile-value-group">
+              <span class="tile-value" id="summary-yield-week">--</span>
+              <span class="tile-unit">kWh</span>
             </div>
           </div>
-        </div>
-      </article>
+        </article>
 
-      <!-- Card 4: Stadtreinigung (Waste Collection) -->
-      <article class="dash-card card-waste" id="card-waste">
-        <header>
-          <h5>🗑️ Abfallkalender</h5>
-        </header>
-        <div class="waste-grid">
-          <div class="waste-item" id="waste-altpapier">
-            <div class="waste-item-icon color-blue">🗑️</div>
-            <div class="waste-item-details">
-              <span class="waste-item-title">Altpapier</span>
-              <span class="waste-item-days" id="waste-altpapier-val">--</span>
+        <article class="dash-card yield-tile">
+          <div class="tile-icon icon-month">🗓️</div>
+          <div class="tile-content">
+            <span class="tile-label">Diesen Monat</span>
+            <div class="tile-value-group">
+              <span class="tile-value" id="summary-yield-month">--</span>
+              <span class="tile-unit">kWh</span>
             </div>
           </div>
-          <div class="waste-item" id="waste-bio">
-            <div class="waste-item-icon color-green">🗑️</div>
-            <div class="waste-item-details">
-              <span class="waste-item-title">Bioabfall</span>
-              <span class="waste-item-days" id="waste-bio-val">--</span>
+        </article>
+
+        <article class="dash-card yield-tile">
+          <div class="tile-icon icon-year">🏆</div>
+          <div class="tile-content">
+            <span class="tile-label">Dieses Jahr</span>
+            <div class="tile-value-group">
+              <span class="tile-value" id="summary-yield-year">--</span>
+              <span class="tile-unit">kWh</span>
             </div>
           </div>
-          <div class="waste-item" id="waste-gelbe-tonne">
-            <div class="waste-item-icon color-yellow">🗑️</div>
-            <div class="waste-item-details">
-              <span class="waste-item-title">Gelbe Tonne</span>
-              <span class="waste-item-days" id="waste-gelbe-tonne-val">--</span>
-            </div>
-          </div>
-          <div class="waste-item" id="waste-restabfall">
-            <div class="waste-item-icon color-gray">🗑️</div>
-            <div class="waste-item-details">
-              <span class="waste-item-title">Restabfall</span>
-              <span class="waste-item-days" id="waste-restabfall-val">--</span>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <!-- Card 5: Solar Yield Stats -->
-      <article class="dash-card card-yield" id="card-yield">
-        <header>
-          <h5>Solarertrag Statistiken</h5>
-        </header>
-        <div class="yield-grid">
-          <div class="yield-item">
-            <span class="yield-title">Täglich</span>
-            <span class="yield-val" id="yield-daily">-- kWh</span>
-          </div>
-          <div class="yield-item">
-            <span class="yield-title">Wöchentlich</span>
-            <span class="yield-val" id="yield-weekly">-- kWh</span>
-          </div>
-          <div class="yield-item">
-            <span class="yield-title">Monatlich</span>
-            <span class="yield-val" id="yield-monthly">-- kWh</span>
-          </div>
-          <div class="yield-item">
-            <span class="yield-title">Jährlich</span>
-            <span class="yield-val" id="yield-yearly">-- kWh</span>
-          </div>
-        </div>
-      </article>
-
-      <!-- Card 5b: Solar Yield last 10 Days Chart -->
-      <article class="dash-card card-chart" id="card-solar-yield-10days">
-        <header>
-          <h5>Solarertrag (Letzte 10 Tage)</h5>
-        </header>
-        <div class="chart-container">
-          <svg class="history-svg" id="solar-yield-10days-svg" viewBox="0 0 500 220">
-            <defs>
-              <linearGradient id="solar-yield-gradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="hsl(45, 100%, 60%)" />
-                <stop offset="100%" stop-color="hsl(20, 100%, 45%)" />
-              </linearGradient>
-            </defs>
-            <!-- Grid Lines -->
-            <line x1="40" y1="20" x2="480" y2="20" class="chart-grid-line" />
-            <line x1="40" y1="95" x2="480" y2="95" class="chart-grid-line" />
-            <line x1="40" y1="170" x2="480" y2="170" class="chart-grid-line" />
-            
-            <!-- Axis lines -->
-            <line x1="40" y1="170" x2="480" y2="170" class="chart-axis" />
-            <line x1="40" y1="20" x2="40" y2="170" class="chart-axis" />
-            
-            <!-- Bars and labels group -->
-            <g id="bars-group"></g>
-            <g id="labels-group"></g>
-            
-            <!-- Y-Axis labels -->
-            <text x="48" y="25" class="chart-label y-label" id="yield-10days-y-max">10 kWh</text>
-            <text x="48" y="95" class="chart-label y-label" id="yield-10days-y-mid">5.0 kWh</text>
-            <text x="48" y="170" class="chart-label y-label">0</text>
-          </svg>
-        </div>
-      </article>
-
-      <!-- Card 6: Solar Generation History Chart -->
-      <article class="dash-card card-chart" id="card-solar-chart">
-        <header>
-          <h5>Solarerzeugung vs. Prognose</h5>
-        </header>
-        <div class="chart-container">
-          <svg class="history-svg" id="solar-history-svg" viewBox="0 0 500 220">
-            <!-- Grid Lines -->
-            <line x1="40" y1="20" x2="480" y2="20" class="chart-grid-line" />
-            <line x1="40" y1="95" x2="480" y2="95" class="chart-grid-line" />
-            <line x1="40" y1="170" x2="480" y2="170" class="chart-grid-line" />
-            
-            <!-- Axis lines -->
-            <line x1="40" y1="170" x2="480" y2="170" class="chart-axis" />
-            <line x1="40" y1="20" x2="40" y2="170" class="chart-axis" />
-            
-            <!-- Paths will be injected here -->
-            <path id="chart-solar-forecast-path" class="chart-line forecast-line" d="" />
-            <path id="chart-solar-actual-path" class="chart-line actual-line" d="" />
-            
-            <!-- Y-Axis labels -->
-            <text x="48" y="25" class="chart-label y-label">2kW</text>
-            <text x="48" y="95" class="chart-label y-label">1kW</text>
-            <text x="48" y="170" class="chart-label y-label">0</text>
-            
-            <!-- X-Axis labels -->
-            <text x="50" y="195" class="chart-label x-label">vor 24 Std.</text>
-            <text x="260" y="195" class="chart-label x-label">vor 12 Std.</text>
-            <text x="480" y="195" class="chart-label x-label text-end">Jetzt</text>
-          </svg>
-          <div class="chart-legend">
-            <span class="legend-item"><span class="legend-dot forecast-dot"></span> Prognose (W)</span>
-            <span class="legend-item"><span class="legend-dot actual-dot"></span> Erzeugung (W)</span>
-          </div>
-        </div>
-      </article>
-
-      <!-- Card 7: Energiebezug History Chart -->
-      <article class="dash-card card-chart" id="card-grid-chart">
-        <header>
-          <h5>Netzbezug vs. Solarleistung</h5>
-        </header>
-        <div class="chart-container">
-          <svg class="history-svg" id="grid-history-svg" viewBox="0 0 500 220">
-            <!-- Grid Lines -->
-            <line x1="40" y1="20" x2="480" y2="20" class="chart-grid-line" />
-            <line x1="40" y1="95" x2="480" y2="95" class="chart-grid-line" />
-            <line x1="40" y1="170" x2="480" y2="170" class="chart-grid-line" />
-            
-            <!-- Axis lines -->
-            <line x1="40" y1="170" x2="480" y2="170" class="chart-axis" />
-            <line x1="40" y1="20" x2="40" y2="170" class="chart-axis" />
-            
-            <!-- Paths will be injected here -->
-            <path id="chart-smartmeter-path" class="chart-line smartmeter-line" d="" />
-            <path id="chart-solar-compare-path" class="chart-line solar-compare-line" d="" />
-            
-            <!-- Y-Axis labels -->
-            <text x="48" y="25" class="chart-label y-label">4kW</text>
-            <text x="48" y="95" class="chart-label y-label">2kW</text>
-            <text x="48" y="170" class="chart-label y-label">0</text>
-            
-            <!-- X-Axis labels -->
-            <text x="50" y="195" class="chart-label x-label">vor 24 Std.</text>
-            <text x="260" y="195" class="chart-label x-label">vor 12 Std.</text>
-            <text x="480" y="195" class="chart-label x-label text-end">Jetzt</text>
-          </svg>
-          <div class="chart-legend">
-            <span class="legend-item"><span class="legend-dot grid-dot"></span> Netzbezug (W)</span>
-            <span class="legend-item"><span class="legend-dot actual-dot"></span> Solarleistung (W)</span>
-          </div>
-        </div>
-      </article>
+        </article>
+      </div>
 
     </div>
+
+    <!-- Middle Chart: Intraday 24h Power Generation Curve -->
+    <article class="dash-card card-chart-large">
+      <header class="card-header flex-between">
+        <div class="header-title">
+          <span class="header-icon">📊</span>
+          <h3>Heutiger Erzeugungsverlauf (5-Minuten-Takt)</h3>
+        </div>
+        <div class="chart-stats-pill">
+          <span>Max: <strong id="intraday-max-val">0 W</strong></span>
+        </div>
+      </header>
+
+      <div class="chart-body">
+        <div class="chart-container" id="intraday-chart-wrapper">
+          <canvas id="intraday-chart"></canvas>
+        </div>
+      </div>
+    </article>
+
+    <!-- Bottom Chart: Historic Aggregated Outputs (Tabs: Täglich / Wöchentlich / Monatlich / Jährlich) -->
+    <article class="dash-card card-chart-large">
+      <header class="card-header flex-between flex-wrap">
+        <div class="header-title">
+          <span class="header-icon">📉</span>
+          <h3 id="history-chart-title">Solarertrags-Historie (Täglich)</h3>
+        </div>
+
+        <!-- Granularity Selector Tabs -->
+        <div class="tab-group" role="tablist">
+          <button class="tab-btn active" data-granularity="d" role="tab" aria-selected="true">Täglich</button>
+          <button class="tab-btn" data-granularity="w" role="tab" aria-selected="false">Wöchentlich</button>
+          <button class="tab-btn" data-granularity="m" role="tab" aria-selected="false">Monatlich</button>
+          <button class="tab-btn" data-granularity="y" role="tab" aria-selected="false">Jährlich</button>
+        </div>
+      </header>
+
+      <div class="chart-body">
+        <div class="history-metrics-summary flex-between">
+          <span class="summary-text" id="history-summary-text">Lade historische Daten...</span>
+          <span class="summary-highlight" id="history-total-text">Gesamtsumme: -- kWh</span>
+        </div>
+
+        <div class="chart-container" id="history-chart-wrapper">
+          <canvas id="history-chart"></canvas>
+        </div>
+      </div>
+    </article>
+
+    <!-- Detailed System Statistics & System Info Grid -->
+    <div class="bottom-stats-grid">
+      <!-- Lifetime Statistics Card -->
+      <article class="dash-card card-info">
+        <header class="card-header">
+          <div class="header-title">
+            <span class="header-icon">⭐</span>
+            <h3>Gesamtstatistik & Rekorde</h3>
+          </div>
+        </header>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Gesamtertrag</span>
+            <span class="info-value highlight-gold" id="stat-total-energy">-- kWh</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Ø pro Tag</span>
+            <span class="info-value" id="stat-avg-daily">-- kWh/Tag</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Höchster Tagesertrag</span>
+            <span class="info-value highlight-green" id="stat-max-daily">-- kWh</span>
+            <small class="info-sub" id="stat-max-daily-date">Datum: --</small>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Erfassungstage</span>
+            <span class="info-value" id="stat-outputs-count">-- Tage</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- System Details Card -->
+      <article class="dash-card card-info">
+        <header class="card-header">
+          <div class="header-title">
+            <span class="header-icon">🔧</span>
+            <h3>Anlagenkonfiguration</h3>
+          </div>
+        </header>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Anlagenname</span>
+            <span class="info-value" id="sys-name">Guerilla</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Leistung</span>
+            <span class="info-value" id="sys-size">570 Wp</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Solarmodule</span>
+            <span class="info-value" id="sys-panels">2x Trina (285W)</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Wechselrichter</span>
+            <span class="info-value" id="sys-inverter">1x APSystems (600W)</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
   </main>
 
-  <!-- App Script (ES Module) -->
+  <!-- Settings Modal Dialog -->
+  <dialog id="settings-modal">
+    <article class="modal-card">
+      <header>
+        <button aria-label="Schließen" class="close" id="modal-close-btn"></button>
+        <h3>⚙️ Dashboard Einstellungen</h3>
+      </header>
+
+      <form id="settings-form">
+        <label for="input-system-id">
+          System ID (PVOutput.org)
+          <input type="text" id="input-system-id" placeholder="z.B. 34161" required>
+        </label>
+
+        <label for="input-api-key">
+          Schreibgeschützter API-Schlüssel (Read-Only API Key)
+          <input type="password" id="input-api-key" placeholder="z.B. pvoutputreadonly" required>
+        </label>
+
+        <label for="input-proxy-url">
+          CORS Proxy Server (Optional)
+          <input type="url" id="input-proxy-url" placeholder="Automatisch (Standard: allorigins/codetabs)">
+          <small>Falls Anfragen blockiert werden, können Sie hier eine eigene Proxy-Adresse angeben.</small>
+        </label>
+
+        <label for="input-refresh-interval">
+          Automatische Aktualisierung
+          <select id="input-refresh-interval">
+            <option value="180000">Alle 3 Minuten</option>
+            <option value="300000" selected>Alle 5 Minuten (Empfohlen)</option>
+            <option value="600000">Alle 10 Minuten</option>
+            <option value="0">Deaktiviert (Nur manuell)</option>
+          </select>
+        </label>
+
+        <footer>
+          <button type="button" class="secondary" id="modal-cancel-btn">Abbrechen</button>
+          <button type="submit" class="contrast">Speichern & Laden</button>
+        </footer>
+      </form>
+    </article>
+  </dialog>
+
+  <!-- Main App Script -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
