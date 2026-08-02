@@ -20,15 +20,16 @@ Designed with a 100% German user interface (*100% Deutsch*) tailored for high vi
 
 ## 🔒 Security & Credentials Architecture
 
-Zero secrets or credentials are stored in the source code repository. Credentials are dynamically resolved at runtime using the following precedence:
+Zero secrets or credentials are hardcoded into the source code repository. Credentials are dynamically resolved at runtime using the following precedence:
 
-1. **URL Query Parameters** (ideal for bookmarks or GitHub Pages sharing):
+1. **URL Query Parameters** (ideal for bookmarks or sharing):
    ```text
    https://yourusername.github.io/ha-dashboard/?sid=YOUR_SYSTEM_ID&key=YOUR_API_KEY
    ```
 2. **Browser `localStorage`**: Persisted safely in browser storage when entered via the settings dialog.
-3. **Local `secrets.json` File** (Git-ignored for local development):
-   Copy `secrets_example.json` to `secrets.json` and enter your PVOutput credentials:
+3. **`secrets.json` File** (Local Development & GitHub Actions):
+   - **Local Dev**: Create `secrets.json` locally (Git-ignored).
+   - **GitHub Pages**: Automatically generated during deployment if GitHub Repository Secrets are configured.
    ```json
    {
      "systemId": "YOUR_SYSTEM_ID",
@@ -56,8 +57,21 @@ To run the dashboard locally:
 
 ---
 
-## 🌐 GitHub Pages Deployment
+## 🌐 GitHub Pages Deployment & Repository Secrets
 
 This repository includes a GitHub Actions workflow (`.github/workflows/pages.yml`) that automatically builds and deploys the dashboard to **GitHub Pages** whenever changes are pushed to `main`.
 
-Pass your credentials via URL query parameters or configure them once in the in-app **⚙️ Einstellungen** menu.
+### Configuring GitHub Repository Secrets
+
+You can supply your PVOutput system credentials securely via GitHub Repository Secrets:
+
+1. Go to your repository on GitHub.
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**.
+3. Click **New repository secret** and define:
+   - `PVOUTPUT_SYSTEM_ID`: Your PVOutput System ID (e.g. `12345`).
+   - `PVOUTPUT_API_KEY`: Your PVOutput API Key (use a **Read-Only** API key).
+   - `PVOUTPUT_PROXY_URL`: *(Optional)* Custom CORS Proxy URL.
+4. Push your changes to `main`. The deployment workflow will automatically generate `secrets.json` during build time and deploy it with your static site.
+
+> [!NOTE]
+> Because GitHub Pages hosts client-side static files, `secrets.json` will be fetched by the browser. Always use a **Read-Only API Key** (`pvoutputreadonly` or your personal read-only API key) when deploying to GitHub Pages.
