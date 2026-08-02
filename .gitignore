@@ -1,3 +1,7 @@
 manifest.json
 brief.md
 node_modules
+*.png
+index_test.html
+set_proxy.html
+secrets.json
