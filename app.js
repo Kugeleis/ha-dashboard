@@ -1,891 +1,987 @@
-import { createVarcoConsumerClient } from "https://esm.sh/@varco/client@0.6.0";
+/**
+ * PVOutput.org Solar Dashboard - Application Logic
+ * Pure Vanilla JavaScript (Client-side HTML5 & SVG)
+ */
 
-// Define the exact Lovelace manifest for permissions request
-const manifest = {
-  "name": "M75 / Home",
-  "version": "0.1.0",
-  "read_entities": [
-    "sensor.altpapier_9449",
-    "sensor.bio_9449",
-    "sensor.co2_signal_co2_intensity",
-    "sensor.co2_signal_grid_fossil_fuel_percentage",
-    "sensor.gelbe_tonne_9449",
-    "sensor.m75_solarertrag_jahrlich",
-    "sensor.m75_solarertrag_monatlich",
-    "sensor.m75_solarertrag_taglich",
-    "sensor.m75_solarertrag_wochentlich",
-    "sensor.power_production_now_2",
-    "sensor.restabfall_9449",
-    "sensor.smartmeter_energy_power_curr",
-    "sensor.solar_share",
-    "sensor.solaranlage_energy_power_2",
-    "sensor.solaranlage_energy_today_2",
-    "weather.forecast_m75"
-  ],
-  "subscriptions": [
-    "sensor.altpapier_9449",
-    "sensor.bio_9449",
-    "sensor.co2_signal_co2_intensity",
-    "sensor.co2_signal_grid_fossil_fuel_percentage",
-    "sensor.gelbe_tonne_9449",
-    "sensor.m75_solarertrag_jahrlich",
-    "sensor.m75_solarertrag_monatlich",
-    "sensor.m75_solarertrag_taglich",
-    "sensor.m75_solarertrag_wochentlich",
-    "sensor.power_production_now_2",
-    "sensor.restabfall_9449",
-    "sensor.smartmeter_energy_power_curr",
-    "sensor.solar_share",
-    "sensor.solaranlage_energy_power_2",
-    "sensor.solaranlage_energy_today_2",
-    "weather.forecast_m75"
-  ],
-  "history": [
-    "sensor.power_production_now_2",
-    "sensor.smartmeter_energy_power_curr",
-    "sensor.solaranlage_energy_power_2",
-    "sensor.solaranlage_energy_today_2"
-  ],
-  "camera_snapshots": [],
-  "actions": [],
-  "dashboard": {
-    "title": "M75",
-    "url_path": "dashboard-m75",
-    "view_title": "Home",
-    "cards": [
-      {
-        "type": "vertical-stack",
-        "title": "Vertical stack",
-        "entities": [
-          "sensor.solar_share",
-          "sensor.solaranlage_energy_power_2"
-        ]
-      },
-      {
-        "type": "entities",
-        "title": "CO2 signal",
-        "entities": [
-          "sensor.co2_signal_co2_intensity",
-          "sensor.co2_signal_grid_fossil_fuel_percentage"
-        ]
-      },
-      {
-        "type": "history-graph",
-        "title": "Solaranlage",
-        "entities": [
-          "sensor.power_production_now_2",
-          "sensor.solaranlage_energy_power_2"
-        ]
-      },
-      {
-        "type": "history-graph",
-        "title": "Energiebezug",
-        "entities": [
-          "sensor.smartmeter_energy_power_curr",
-          "sensor.solaranlage_energy_power_2"
-        ]
-      },
-      {
-        "type": "weather-forecast",
-        "title": "Weather forecast",
-        "entities": [
-          "weather.forecast_m75"
-        ]
-      },
-      {
-        "type": "entities",
-        "title": "Entities",
-        "entities": [
-          "sensor.m75_solarertrag_jahrlich",
-          "sensor.m75_solarertrag_monatlich",
-          "sensor.m75_solarertrag_taglich",
-          "sensor.m75_solarertrag_wochentlich"
-        ]
-      },
-      {
-        "type": "entities",
-        "title": "🗑️ Abfallkalender M75",
-        "entities": [
-          "sensor.altpapier_9449",
-          "sensor.bio_9449",
-          "sensor.gelbe_tonne_9449",
-          "sensor.restabfall_9449"
-        ]
-      },
-      {
-        "type": "statistics-graph",
-        "title": "Statistics graph",
-        "entities": [
-          "sensor.solaranlage_energy_today_2"
-        ]
-      }
-    ]
-  }
+// Global Configuration & Defaults
+const DEFAULTS = {
+  systemId: "",
+  apiKey: "",
+  proxyUrl: "",
+  refreshInterval: 300000 // 5 minutes
 };
 
-const AUTHORITY_ID = "SFxZ6jlLjm44y4usVeKWWZ8avrh_xWeFe28o9RGlZaw";
-const BRIDGE_URL = "wss://varco-bridge.andreabaccega.com";
-
-// State cache for entities
-const stateCache = {};
-let client = null;
-
-// DOM Elements
-const connPill = document.getElementById("conn-pill");
-const reconnectBtn = document.getElementById("reconnect-btn");
-const pairingSection = document.getElementById("pairing-section");
-const pairingCodeEl = document.getElementById("pairing-code");
-const dashboardGrid = document.getElementById("dashboard-grid");
-
-// Weather Translation lookup table
-const weatherTranslations = {
-  "sunny": "Sonnig",
-  "clear-night": "Klare Nacht",
-  "partlycloudy": "Leicht bewölkt",
+// Weather Translations from English PVOutput weather strings to German
+const WEATHER_GERMAN = {
+  "fine": "Sonnig",
+  "partly cloudy": "Leicht bewölkt",
+  "mostly cloudy": "Stark bewölkt",
   "cloudy": "Bewölkt",
-  "rainy": "Regnerisch",
-  "pouring": "Starker Regen",
-  "snowy": "Schneefall",
+  "showers": "Regenschauer",
+  "rain": "Regnerisch",
+  "drizzle": "Sprühregen",
+  "snow": "Schnee",
   "fog": "Nebel",
   "windy": "Windig",
   "unknown": "Unbekannt"
 };
 
-// Initialize application
-async function init() {
-  setupListeners();
+// Runtime Credentials Resolver (Order: URL Parameters -> localStorage -> window.ENV -> Defaults)
+function resolveCredentials() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const windowEnv = window.ENV || {};
   
-  // Try to pair and connect
+  const sid = urlParams.get("sid") || urlParams.get("systemId") || localStorage.getItem("pv_sys_id") || windowEnv.SYSTEM_ID || DEFAULTS.systemId;
+  const key = urlParams.get("key") || urlParams.get("apiKey") || localStorage.getItem("pv_api_key") || windowEnv.API_KEY || DEFAULTS.apiKey;
+  const proxy = urlParams.get("proxy") || urlParams.get("proxyUrl") || localStorage.getItem("pv_proxy_url") || windowEnv.PROXY_URL || DEFAULTS.proxyUrl;
+
+  if (urlParams.get("sid") || urlParams.get("systemId")) localStorage.setItem("pv_sys_id", sid);
+  if (urlParams.get("key") || urlParams.get("apiKey")) localStorage.setItem("pv_api_key", key);
+  if (urlParams.get("proxy") || urlParams.get("proxyUrl")) localStorage.setItem("pv_proxy_url", proxy);
+
+  return { systemId: sid, apiKey: key, proxyUrl: proxy };
+}
+
+const initialCreds = resolveCredentials();
+
+// State Store
+const state = {
+  systemId: initialCreds.systemId,
+  apiKey: initialCreds.apiKey,
+  proxyUrl: initialCreds.proxyUrl,
+  refreshInterval: parseInt(localStorage.getItem("pv_refresh_interval") || DEFAULTS.refreshInterval, 10),
+  
+  // Data Cache
+  liveStatus: null,
+  intradayHistory: [],
+  rawDailyOutputs: [],
+  outputData: {
+    d: [], // Daily
+    w: [], // Weekly
+    m: [], // Monthly
+    y: []  // Yearly
+  },
+  statistic: null,
+  systemInfo: null,
+  
+  // UI State
+  activeGranularity: "d",
+  refreshTimer: null,
+  isFetching: false
+};
+
+// DOM Elements
+const elements = {
+  navSystemId: document.getElementById("nav-system-id"),
+  connPill: document.getElementById("conn-pill"),
+  refreshBtn: document.getElementById("refresh-btn"),
+  settingsBtn: document.getElementById("settings-btn"),
+  statusBanner: document.getElementById("status-banner"),
+  statusBannerText: document.getElementById("status-banner-text"),
+  
+  // Live Card
+  livePowerVal: document.getElementById("live-power-val"),
+  liveTodayKwh: document.getElementById("live-today-kwh"),
+  liveTime: document.getElementById("live-time"),
+  livePeakPower: document.getElementById("live-peak-power"),
+  livePeakTime: document.getElementById("live-peak-time"),
+  liveEfficiency: document.getElementById("live-efficiency"),
+  liveTemp: document.getElementById("live-temp"),
+  liveCondition: document.getElementById("live-condition"),
+  
+  // Yield Summary Tiles
+  summaryDay: document.getElementById("summary-yield-day"),
+  summaryDayUnit: document.getElementById("summary-yield-day-unit"),
+  summaryWeek: document.getElementById("summary-yield-week"),
+  summaryMonth: document.getElementById("summary-yield-month"),
+  summaryYear: document.getElementById("summary-yield-year"),  // Intraday & History Chart Canvas Elements
+  intradayMaxVal: document.getElementById("intraday-max-val"),
+  intradayChartCanvas: document.getElementById("intraday-chart"),
+  
+  // History Chart & Tabs
+  historyChartTitle: document.getElementById("history-chart-title"),
+  tabButtons: document.querySelectorAll(".tab-btn"),
+  historySummaryText: document.getElementById("history-summary-text"),
+  historyTotalText: document.getElementById("history-total-text"),
+  historyChartCanvas: document.getElementById("history-chart"),
+
+  // Statistics & System InfoInfo
+  statTotalEnergy: document.getElementById("stat-total-energy"),
+  statAvgDaily: document.getElementById("stat-avg-daily"),
+  statMaxDaily: document.getElementById("stat-max-daily"),
+  statMaxDailyDate: document.getElementById("stat-max-daily-date"),
+  statOutputsCount: document.getElementById("stat-outputs-count"),
+  
+  sysName: document.getElementById("sys-name"),
+  sysSize: document.getElementById("sys-size"),
+  sysPanels: document.getElementById("sys-panels"),
+  sysInverter: document.getElementById("sys-inverter"),
+  
+  // Modal Elements
+  settingsModal: document.getElementById("settings-modal"),
+  settingsForm: document.getElementById("settings-form"),
+  inputSystemId: document.getElementById("input-system-id"),
+  inputApiKey: document.getElementById("input-api-key"),
+  inputProxyUrl: document.getElementById("input-proxy-url"),
+  inputRefreshInterval: document.getElementById("input-refresh-interval"),
+  modalCloseBtn: document.getElementById("modal-close-btn"),
+  modalCancelBtn: document.getElementById("modal-cancel-btn")
+};
+
+// Async secrets.json loader (if available locally or on web root)
+async function loadSecretsJson() {
   try {
-    updateConnectionStatus({ mode: "connecting", detail: "Verbindung wird initialisiert..." });
-    
-    client = createVarcoConsumerClient({
-      authorityId: AUTHORITY_ID,
-      bridgeUrl: BRIDGE_URL,
-      manifest,
-      reconnect: true,
-      onTransportStatus: (status) => {
-        console.log("Varco Status Update:", status);
-        updateConnectionStatus(status);
+    const res = await fetch("secrets.json", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data) {
+        if (!state.systemId && data.systemId) state.systemId = data.systemId.trim();
+        if (!state.apiKey && data.apiKey) state.apiKey = data.apiKey.trim();
+        if (!state.proxyUrl && data.proxyUrl) state.proxyUrl = data.proxyUrl.trim();
       }
-    });
-
-    // Request Access (triggers pairing code generation if not already approved)
-    const access = await client.requestAccess();
-    console.log("Access Request:", access);
-    
-    if (access.status === "approved") {
-      hidePairing();
-    } else {
-      showPairing(access.pairing_code);
     }
-
-    // Connect to the bridge
-    await client.connect();
-    hidePairing();
-    
-    // Subscribe to entities
-    subscribeToData();
-    
-    // Fetch and draw history charts
-    refreshHistoryData();
-    
-    // Refresh history every 5 minutes
-    setInterval(refreshHistoryData, 5 * 60 * 1000);
-    
-  } catch (error) {
-    console.error("Connection failed:", error);
-    updateConnectionStatus({ mode: "disconnected", detail: error.message });
-    // Use simulated mock data if connection fails, so user has a working demo
-    loadMockData();
+  } catch (err) {
+    // secrets.json not present or unreadable, silently ignore
   }
 }
 
-function setupListeners() {
-  reconnectBtn.addEventListener("click", async () => {
-    if (client) {
-      try {
-        updateConnectionStatus({ mode: "connecting", detail: "Verbindung wird neu aufgebaut..." });
-        await client.close();
-      } catch (e) {}
-    }
-    init();
+// Initialize Application
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadSecretsJson();
+  initUI();
+  setupEventListeners();
+  renderDashboardUI();
+  loadAllDashboardData();
+  startAutoRefresh();
+});
+
+function initUI() {
+  elements.navSystemId.textContent = state.systemId || "--";
+  elements.inputSystemId.value = state.systemId;
+  elements.inputApiKey.value = state.apiKey;
+  elements.inputProxyUrl.value = state.proxyUrl;
+  elements.inputRefreshInterval.value = state.refreshInterval.toString();
+
+  if (!state.systemId || !state.apiKey) {
+    updateBadge("disconnected", "Konfiguration fehlt");
+    showStatusBanner("Willkommen! Bitte geben Sie Ihre PVOutput System-ID & API-Key in den Einstellungen ein (oder per URL: ?sid=...&key=...).", "info");
+    setTimeout(() => {
+      if (elements.settingsModal && !elements.settingsModal.open) {
+        elements.settingsModal.showModal();
+      }
+    }, 400);
+  }
+}
+
+function setupEventListeners() {
+  elements.refreshBtn.addEventListener("click", () => {
+    loadAllDashboardData(true);
   });
   
-  // Redraw charts on resize to keep SVG responsive
-  window.addEventListener("resize", () => {
-    drawSolarChart();
-    drawGridChart();
-    drawSolarYield10DaysChart();
+  elements.settingsBtn.addEventListener("click", () => {
+    elements.settingsModal.showModal();
+  });
+  
+  elements.modalCloseBtn.addEventListener("click", () => elements.settingsModal.close());
+  elements.modalCancelBtn.addEventListener("click", () => elements.settingsModal.close());
+  
+  elements.settingsForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    state.systemId = elements.inputSystemId.value.trim();
+    state.apiKey = elements.inputApiKey.value.trim();
+    state.proxyUrl = elements.inputProxyUrl.value.trim();
+    state.refreshInterval = parseInt(elements.inputRefreshInterval.value, 10);
+    
+    localStorage.setItem("pv_sys_id", state.systemId);
+    localStorage.setItem("pv_api_key", state.apiKey);
+    localStorage.setItem("pv_proxy_url", state.proxyUrl);
+    localStorage.setItem("pv_refresh_interval", state.refreshInterval.toString());
+    
+    elements.navSystemId.textContent = state.systemId;
+    elements.settingsModal.close();
+    
+    startAutoRefresh();
+    loadAllDashboardData(true);
+  });
+  
+  // Tab Buttons for Granularity
+  elements.tabButtons.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const gran = e.target.getAttribute("data-granularity");
+      if (!gran || gran === state.activeGranularity) return;
+      
+      elements.tabButtons.forEach(b => {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
+      e.target.classList.add("active");
+      e.target.setAttribute("aria-selected", "true");
+      
+      state.activeGranularity = gran;
+      renderHistoryChart();
+    });
   });
 }
 
-function updateConnectionStatus(status) {
-  connPill.className = "badge";
+function startAutoRefresh() {
+  if (state.refreshTimer) clearInterval(state.refreshTimer);
   
-  if (status.mode === "connected" || status.mode === "p2p") {
-    connPill.classList.add("badge-connected");
-    connPill.textContent = status.mode === "p2p" ? "Verbunden (P2P)" : "Verbunden (Relay)";
-  } else if (status.mode === "connecting" || status.detail?.includes("connecting") || status.detail?.includes("initialisiert") || status.detail?.includes("neu aufgebaut")) {
-    connPill.classList.add("badge-connecting");
-    connPill.textContent = "Verbinde...";
-  } else {
-    connPill.classList.add("badge-disconnected");
-    connPill.textContent = "Nicht verbunden";
-  }
-  
-  if (status.detail) {
-    connPill.title = status.detail;
+  if (state.refreshInterval > 0) {
+    state.refreshTimer = setInterval(() => {
+      loadAllDashboardData(false);
+    }, state.refreshInterval);
   }
 }
 
-function showPairing(code) {
-  pairingSection.style.display = "block";
-  pairingCodeEl.textContent = formatPairingCode(code);
-}
+// Utility delay for sequential staggered requests
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-function hidePairing() {
-  pairingSection.style.display = "none";
-}
-
-function formatPairingCode(code) {
-  if (!code) return "--- - ---";
-  if (code.length === 6) {
-    return `${code.slice(0, 3)} - ${code.slice(3)}`;
-  }
-  return code;
-}
-
-// Subscriptions
-let currentSubscriptionId = null;
-async function subscribeToData() {
-  if (!client) return;
-  
+// Fetch with timeout helper
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    if (currentSubscriptionId) {
-      await client.unsubscribe(currentSubscriptionId);
-    }
-    
-    currentSubscriptionId = await client.subscribeEntities(manifest.subscriptions, (msg) => {
-      console.log("Subscription payload:", msg);
-      if (msg && msg.states) {
-        Object.assign(stateCache, msg.states);
-        updateDashboardUI();
-      }
-    });
-  } catch (error) {
-    console.error("Subscription failed:", error);
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
   }
 }
 
-// Parse and format waste collection state values (numbers or ISO dates or relative strings) to German
-function formatWasteDays(stateVal) {
-  if (stateVal === undefined || stateVal === null) return "--";
+// Network Request with Multi-Proxy Fallback Chain & Short Timeout
+async function fetchPVOutput(endpoint, queryParams = {}) {
+  const params = new URLSearchParams({
+    key: state.apiKey,
+    sid: state.systemId,
+    ...queryParams
+  });
   
-  const stateStr = String(stateVal).trim();
-  if (stateStr === "" || stateStr.toLowerCase() === "unknown") return "--";
+  const targetUrl = `https://pvoutput.org/service/r2/${endpoint}?${params.toString()}`;
   
-  // Try to parse as integer (number of days)
-  const daysNum = parseInt(stateStr, 10);
-  if (!Number.isNaN(daysNum) && String(daysNum) === stateStr) {
-    if (daysNum === 0) return "Heute";
-    if (daysNum === 1) return "Morgen";
-    if (daysNum === 2) return "Übermorgen";
-    return `in ${daysNum} Tagen`;
+  const proxyCandidates = [];
+  
+  // Custom user proxy if configured
+  if (state.proxyUrl) {
+    proxyCandidates.push({
+      type: "raw",
+      url: state.proxyUrl.includes("%s") ? state.proxyUrl.replace("%s", encodeURIComponent(targetUrl)) : `${state.proxyUrl}${encodeURIComponent(targetUrl)}`
+    });
   }
   
-  // Try to parse as ISO Date (e.g. YYYY-MM-DD)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(stateStr)) {
+  // Candidate Proxies
+  proxyCandidates.push({ type: "raw", url: targetUrl });
+  proxyCandidates.push({ type: "raw", url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` });
+  proxyCandidates.push({ type: "raw", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` });
+  proxyCandidates.push({ type: "allorigins-json", url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}` });
+
+  let lastError = null;
+  for (const proxy of proxyCandidates) {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const targetDate = new Date(stateStr);
-      targetDate.setHours(0, 0, 0, 0);
-      const diffTime = targetDate.getTime() - today.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays === 0) return "Heute";
-      if (diffDays === 1) return "Morgen";
-      if (diffDays === 2) return "Übermorgen";
-      if (diffDays > 2) return `in ${diffDays} Tagen`;
-      if (diffDays < 0) return "Vorüber";
-    } catch (e) {}
-  }
-  
-  // Try parsing English/German strings
-  const lowerStr = stateStr.toLowerCase();
-  if (lowerStr === "today" || lowerStr === "heute") return "Heute";
-  if (lowerStr === "tomorrow" || lowerStr === "morgen") return "Morgen";
-  const daysMatch = lowerStr.match(/in (\d+) days?/i) || lowerStr.match(/in (\d+) tagen?/i);
-  if (daysMatch) {
-    const days = parseInt(daysMatch[1], 10);
-    if (days === 1) return "Morgen";
-    if (days === 2) return "Übermorgen";
-    return `in ${days} Tagen`;
-  }
-  
-  return stateStr;
-}
-
-// Update UI Widgets
-function updateDashboardUI() {
-  // 1. Solar share & Solaranlage Power
-  const solarShare = stateCache["sensor.solar_share"];
-  const solarPower = stateCache["sensor.solaranlage_energy_power_2"];
-  
-  if (solarShare) {
-    const val = Math.round(parseFloat(solarShare.state) || 0);
-    const gauge = document.getElementById("solar-share-gauge");
-    const label = document.getElementById("solar-share-val");
-    if (gauge && label) {
-      gauge.style.setProperty("--val", val);
-      label.textContent = `${val}%`;
-    }
-  }
-  if (solarPower) {
-    const val = Math.round(parseFloat(solarPower.state) || 0);
-    const label = document.getElementById("solar-power-val");
-    if (label) label.textContent = val;
-  }
-
-  // 2. Weather Card
-  const weather = stateCache["weather.forecast_m75"];
-  if (weather) {
-    const temp = parseFloat(weather.attributes.temperature || weather.state) || 0;
-    const humidity = weather.attributes.humidity || 0;
-    const condition = weather.state || "unknown";
-    
-    const translatedCondition = weatherTranslations[condition.toLowerCase()] || condition;
-    
-    document.getElementById("weather-temp").textContent = temp.toFixed(1);
-    document.getElementById("weather-humidity").textContent = `${humidity}%`;
-    document.getElementById("weather-condition").textContent = translatedCondition;
-    document.getElementById("weather-state").textContent = translatedCondition;
-    
-    // Map condition to emoji
-    const weatherIcons = {
-      "sunny": "☀️",
-      "clear-night": "🌙",
-      "partlycloudy": "⛅",
-      "cloudy": "☁️",
-      "rainy": "🌧",
-      "pouring": "⛈",
-      "snowy": "❄️",
-      "fog": "🌫",
-      "windy": "💨"
-    };
-    document.getElementById("weather-icon").textContent = weatherIcons[condition.toLowerCase()] || "⛅";
-  }
-
-  // 3. Carbon Signal
-  const co2Intensity = stateCache["sensor.co2_signal_co2_intensity"];
-  const fossilPercent = stateCache["sensor.co2_signal_grid_fossil_fuel_percentage"];
-  
-  if (co2Intensity) {
-    const intensity = parseFloat(co2Intensity.state) || 0;
-    document.getElementById("co2-intensity-val").textContent = Math.round(intensity);
-    
-    const carbonBar = document.getElementById("carbon-bar");
-    const carbonRating = document.getElementById("co2-rating-val");
-    
-    const pct = Math.min(100, Math.max(5, (intensity / 500) * 100));
-    if (carbonBar) carbonBar.style.width = `${pct}%`;
-    
-    let rating = "Niedrig";
-    if (intensity > 250) {
-      rating = "Hoch";
-      if (carbonBar) carbonBar.style.background = "linear-gradient(to right, #10b981, #f59e0b, #ef4444)";
-    } else if (intensity > 150) {
-      rating = "Mittel";
-      if (carbonBar) carbonBar.style.background = "linear-gradient(to right, #10b981, #f59e0b)";
-    } else {
-      rating = "Niedrig";
-      if (carbonBar) carbonBar.style.background = "#10b981";
-    }
-    if (carbonRating) carbonRating.textContent = rating;
-  }
-  
-  if (fossilPercent) {
-    const pct = parseFloat(fossilPercent.state) || 0;
-    document.getElementById("co2-fossil-val").textContent = `${pct.toFixed(1)}%`;
-  }
-
-  // 4. Waste Collection (Individual Sensors)
-  const bins = [
-    { id: "altpapier", entity: "sensor.altpapier_9449" },
-    { id: "bio", entity: "sensor.bio_9449" },
-    { id: "gelbe-tonne", entity: "sensor.gelbe_tonne_9449" },
-    { id: "restabfall", entity: "sensor.restabfall_9449" }
-  ];
-  
-  bins.forEach(bin => {
-    const sensor = stateCache[bin.entity];
-    const itemEl = document.getElementById(`waste-${bin.id}`);
-    const valEl = document.getElementById(`waste-${bin.id}-val`);
-    
-    if (sensor && valEl && itemEl) {
-      const parsedVal = formatWasteDays(sensor.state);
-      valEl.textContent = parsedVal;
-      
-      const lowerVal = parsedVal.toLowerCase();
-      const isDue = lowerVal === "heute" || lowerVal === "morgen" || lowerVal === "übermorgen" || lowerVal.includes("in 1 tag") || lowerVal.includes("in 2 tag");
-      if (isDue) {
-        itemEl.classList.add("waste-due");
-      } else {
-        itemEl.classList.remove("waste-due");
+      const res = await fetchWithTimeout(proxy.url, { cache: "no-store" }, 2000);
+      if (res.ok) {
+        if (proxy.type === "allorigins-json") {
+          const json = await res.json();
+          if (json && json.contents) {
+            const contents = json.contents.trim();
+            if (!contents.includes("<html") && !contents.startsWith("Err")) {
+              return contents;
+            }
+          }
+        } else {
+          const text = await res.text();
+          if (text && !text.includes("<html") && !text.startsWith("Err") && text.trim().length > 0) {
+            return text.trim();
+          }
+        }
       }
+    } catch (err) {
+      lastError = err;
     }
-  });
-
-  // 5. Yield Stats
-  const yieldDaily = stateCache["sensor.solaranlage_energy_today_2"] || stateCache["sensor.m75_solarertrag_taglich"];
-  const yieldWeekly = stateCache["sensor.m75_solarertrag_wochentlich"];
-  const yieldMonthly = stateCache["sensor.m75_solarertrag_monatlich"];
-  const yieldYearly = stateCache["sensor.m75_solarertrag_jahrlich"];
+  }
   
-  if (yieldDaily) document.getElementById("yield-daily").textContent = `${parseFloat(yieldDaily.state).toFixed(2)} kWh`;
-  if (yieldWeekly) document.getElementById("yield-weekly").textContent = `${parseFloat(yieldWeekly.state).toFixed(2)} kWh`;
-  if (yieldMonthly) document.getElementById("yield-monthly").textContent = `${parseFloat(yieldMonthly.state).toFixed(2)} kWh`;
-  if (yieldYearly) document.getElementById("yield-yearly").textContent = `${parseFloat(yieldYearly.state).toFixed(2)} kWh`;
+  throw lastError || new Error(`Konnte keine Verbindung zu ${endpoint} herstellen.`);
 }
 
-// History Handling
-let solarHistory = [];
-let forecastHistory = [];
-let gridHistory = [];
-let solarYield10DaysHistory = [];
+// Staggered Sequential Fetcher with 1500ms delay to prevent PVOutput HTTP 403 rate-limiting
+async function loadAllDashboardData(manual = false) {
+  if (!state.systemId || !state.apiKey) {
+    updateBadge("disconnected", "Konfiguration fehlt");
+    showStatusBanner("Bitte PVOutput System-ID & API-Key in den Einstellungen eintragen.", "info");
+    return;
+  }
 
-async function refreshHistoryData() {
-  if (!client) return;
+  if (state.isFetching) return;
+  state.isFetching = true;
+  
+  updateBadge("connecting", manual ? "Lade Daten..." : "Aktualisiere...");
+  showStatusBanner("Lade Solardaten von PVOutput.org...", "info");
+  
+  let successCount = 0;
   
   try {
-    const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const entities24h = [
-      "sensor.solaranlage_energy_power_2",
-      "sensor.power_production_now_2",
-      "sensor.smartmeter_energy_power_curr"
-    ];
-    const historyData = await client.queryHistory(entities24h, { start_time: startTime });
-    
-    console.log("History Data (24h):", historyData);
-    
-    if (historyData) {
-      solarHistory = parseHistorySeries(historyData["sensor.solaranlage_energy_power_2"]);
-      forecastHistory = parseHistorySeries(historyData["sensor.power_production_now_2"]);
-      gridHistory = parseHistorySeries(historyData["sensor.smartmeter_energy_power_curr"]);
-      
-      drawSolarChart();
-      drawGridChart();
-    }
-  } catch (error) {
-    console.error("Failed to fetch 24h history:", error);
-  }
-
-  try {
-    const startTime10Days = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
-    const historyData10Days = await client.queryHistory(["sensor.solaranlage_energy_today_2"], { start_time: startTime10Days });
-    
-    console.log("History Data (10 Days):", historyData10Days);
-    
-    if (historyData10Days && historyData10Days["sensor.solaranlage_energy_today_2"]) {
-      solarYield10DaysHistory = parseHistorySeries(historyData10Days["sensor.solaranlage_energy_today_2"]);
-      drawSolarYield10DaysChart();
-    }
-  } catch (error) {
-    console.error("Failed to fetch 10-day history:", error);
-  }
-}
-
-function parseHistorySeries(rawSeries) {
-  if (!rawSeries || !Array.isArray(rawSeries)) return [];
-  
-  return rawSeries.map(item => {
-    let time = 0;
-    if (item.last_changed) time = Date.parse(item.last_changed);
-    else if (item.lu) time = item.lu * 1000;
-    else if (item.last_updated) time = Date.parse(item.last_updated);
-    
-    let val = 0;
-    if (item.state !== undefined && item.state !== null) val = parseFloat(item.state);
-    else if (item.s !== undefined) val = parseFloat(item.s);
-    
-    return { time, val: Number.isNaN(val) ? 0 : val };
-  }).filter(item => !Number.isNaN(item.time) && item.time > 0);
-}
-
-// Chart Drawers (SVG path builder)
-function drawSolarChart() {
-  const svg = document.getElementById("solar-history-svg");
-  const forecastPath = document.getElementById("chart-solar-forecast-path");
-  const actualPath = document.getElementById("chart-solar-actual-path");
-  if (!svg || !forecastPath || !actualPath) return;
-
-  const dataActual = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
-  const dataForecast = forecastHistory.length > 0 ? forecastHistory : getMockHistory("forecast");
-  
-  const w = 500;
-  const h = 220;
-  
-  const padLeft = 55;
-  const padRight = 20;
-  const padTop = 20;
-  const padBottom = 50;
-  
-  const chartW = w - padLeft - padRight;
-  const chartH = h - padTop - padBottom;
-  
-  const now = Date.now();
-  const oneDayAgo = now - 24 * 60 * 60 * 1000;
-  
-  const maxActual = Math.max(...dataActual.map(d => d.val), 0);
-  const maxForecast = Math.max(...dataForecast.map(d => d.val), 0);
-  const maxVal = Math.max(1000, maxActual, maxForecast) * 1.1;
-  
-  forecastPath.setAttribute("d", buildSVGPath(dataForecast, oneDayAgo, now, maxVal, padLeft, chartW, padTop, chartH));
-  actualPath.setAttribute("d", buildSVGPath(dataActual, oneDayAgo, now, maxVal, padLeft, chartW, padTop, chartH));
-  
-  const maxKW = (maxVal / 1000).toFixed(1);
-  const midKW = (maxVal / 2000).toFixed(1);
-  
-  svg.querySelectorAll(".y-label")[0].textContent = `${maxKW}kW`;
-  svg.querySelectorAll(".y-label")[1].textContent = `${midKW}kW`;
-}
-
-function drawGridChart() {
-  const svg = document.getElementById("grid-history-svg");
-  const gridPath = document.getElementById("chart-smartmeter-path");
-  const solarComparePath = document.getElementById("chart-solar-compare-path");
-  if (!svg || !gridPath || !solarComparePath) return;
-
-  const dataGrid = gridHistory.length > 0 ? gridHistory : getMockHistory("grid");
-  const dataSolar = solarHistory.length > 0 ? solarHistory : getMockHistory("actual");
-  
-  const w = 500;
-  const h = 220;
-  
-  const padLeft = 55;
-  const padRight = 20;
-  const padTop = 20;
-  const padBottom = 50;
-  
-  const chartW = w - padLeft - padRight;
-  const chartH = h - padTop - padBottom;
-  
-  const now = Date.now();
-  const oneDayAgo = now - 24 * 60 * 60 * 1000;
-  
-  const valsGrid = dataGrid.map(d => d.val);
-  const valsSolar = dataSolar.map(d => d.val);
-  const maxVal = Math.max(2000, ...valsGrid, ...valsSolar) * 1.1;
-  const minVal = Math.min(0, ...valsGrid);
-  
-  gridPath.setAttribute("d", buildSVGPathRange(dataGrid, oneDayAgo, now, minVal, maxVal, padLeft, chartW, padTop, chartH));
-  solarComparePath.setAttribute("d", buildSVGPathRange(dataSolar, oneDayAgo, now, minVal, maxVal, padLeft, chartW, padTop, chartH));
-  
-  const maxKW = (maxVal / 1000).toFixed(1);
-  const midKW = ((maxVal + minVal) / 2000).toFixed(1);
-  const minKW = (minVal / 1000).toFixed(1);
-  
-  svg.querySelectorAll(".y-label")[0].textContent = `${maxKW}kW`;
-  svg.querySelectorAll(".y-label")[1].textContent = `${midKW}kW`;
-  svg.querySelectorAll(".y-label")[2].textContent = `${minKW}kW`;
-}
-
-// Build SVG line path string for [0, maxVal]
-function buildSVGPath(data, minTime, maxTime, maxVal, xOffset, width, yOffset, height) {
-  if (data.length === 0) return "";
-  
-  const sorted = [...data].sort((a, b) => a.time - b.time);
-  
-  let path = "";
-  for (let i = 0; i < sorted.length; i++) {
-    const point = sorted[i];
-    
-    const timeDelta = maxTime - minTime;
-    const xPct = timeDelta > 0 ? (point.time - minTime) / timeDelta : 0;
-    const x = xOffset + xPct * width;
-    
-    const yPct = maxVal > 0 ? point.val / maxVal : 0;
-    const y = yOffset + height - yPct * height;
-    
-    const clampedX = Math.max(xOffset, Math.min(xOffset + width, x));
-    const clampedY = Math.max(yOffset, Math.min(yOffset + height, y));
-    
-    if (i === 0) {
-      path += `M ${clampedX.toFixed(1)} ${clampedY.toFixed(1)}`;
-    } else {
-      path += ` L ${clampedX.toFixed(1)} ${clampedY.toFixed(1)}`;
-    }
-  }
-  return path;
-}
-
-// Build SVG line path for ranges [minVal, maxVal] (supporting negative values)
-function buildSVGPathRange(data, minTime, maxTime, minVal, maxVal, xOffset, width, yOffset, height) {
-  if (data.length === 0) return "";
-  
-  const sorted = [...data].sort((a, b) => a.time - b.time);
-  const valRange = maxVal - minVal;
-  
-  let path = "";
-  for (let i = 0; i < sorted.length; i++) {
-    const point = sorted[i];
-    
-    const timeDelta = maxTime - minTime;
-    const xPct = timeDelta > 0 ? (point.time - minTime) / timeDelta : 0;
-    const x = xOffset + xPct * width;
-    
-    const yPct = valRange > 0 ? (point.val - minVal) / valRange : 0;
-    const y = yOffset + height - yPct * height;
-    
-    const clampedX = Math.max(xOffset, Math.min(xOffset + width, x));
-    const clampedY = Math.max(yOffset, Math.min(yOffset + height, y));
-    
-    if (i === 0) {
-      path += `M ${clampedX.toFixed(1)} ${clampedY.toFixed(1)}`;
-    } else {
-      path += ` L ${clampedX.toFixed(1)} ${clampedY.toFixed(1)}`;
-    }
-  }
-  return path;
-}
-
-// Get daily yield values (max - min) over the last 10 days to support lifetime accumulator sensors
-function getDailyYieldValues(series) {
-  const dailyStats = {};
-  
-  // Initialize last 10 days using calendar date offset
-  const now = new Date();
-  const dayStrings = [];
-  for (let i = 9; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const key = `${yyyy}-${mm}-${dd}`;
-    dailyStats[key] = { min: Infinity, max: -Infinity };
-    dayStrings.push(key);
-  }
-  
-  // Find minimum and maximum values on each day
-  for (const point of series) {
-    const d = new Date(point.time);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const key = `${yyyy}-${mm}-${dd}`;
-    if (key in dailyStats) {
-      if (point.val < dailyStats[key].min) {
-        dailyStats[key].min = point.val;
+    // 1. Fetch Intraday 5-min history & Live Status in 1 request
+    try {
+      const historyIntradayRaw = await fetchPVOutput("getstatus.jsp", { h: 1, limit: 288 });
+      if (historyIntradayRaw) {
+        state.intradayHistory = parseIntradayHistory(historyIntradayRaw);
+        if (state.intradayHistory.length > 0) {
+          const latestPoint = state.intradayHistory[state.intradayHistory.length - 1];
+          if (!state.liveStatus || `${latestPoint.date}${latestPoint.time}` >= `${state.liveStatus.date}${state.liveStatus.time}`) {
+            state.liveStatus = {
+              date: latestPoint.date,
+              time: latestPoint.time,
+              energyWh: latestPoint.energyWh,
+              powerW: latestPoint.powerW,
+              efficiency: latestPoint.efficiency,
+              tempC: latestPoint.tempC
+            };
+          }
+        }
+        successCount++;
       }
-      if (point.val > dailyStats[key].max) {
-        dailyStats[key].max = point.val;
+    } catch (e) {
+      console.warn("intraday history fetch warning:", e);
+    }
+
+    await delay(1500);
+
+    // 2. Fetch Output History (365 days)
+    try {
+      const outputRaw = await fetchPVOutput("getoutput.jsp", { limit: 365 });
+      if (outputRaw) {
+        state.rawDailyOutputs = parseOutputRows(outputRaw);
+        computeOutputAggregations(state.rawDailyOutputs);
+        successCount++;
+      }
+    } catch (e) {
+      console.warn("getoutput.jsp fetch warning:", e);
+    }
+    
+    await delay(1500);
+
+    // 3. Fetch Overall Statistic (only if missing or manual refresh)
+    if (!state.statistic || manual) {
+      try {
+        const statRaw = await fetchPVOutput("getstatistic.jsp");
+        if (statRaw) {
+          state.statistic = parseStatistic(statRaw);
+          successCount++;
+        }
+      } catch (e) {
+        console.warn("getstatistic.jsp fetch warning:", e);
+      }
+      await delay(1500);
+    }
+
+    // 4. Fetch System Info (only if missing or manual refresh)
+    if (!state.systemInfo || manual) {
+      try {
+        const sysRaw = await fetchPVOutput("getsystem.jsp");
+        if (sysRaw) {
+          state.systemInfo = parseSystemInfo(sysRaw);
+          successCount++;
+        }
+      } catch (e) {
+        console.warn("getsystem.jsp fetch warning:", e);
       }
     }
-  }
-  
-  // Calculate yield (max - min) and convert to array of { day: string, label: string, val: number }
-  const weekdays = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-  return dayStrings.map(key => {
-    const [yyyy, mm, dd] = key.split('-');
-    const dateObj = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
-    const label = `${dd}.${mm}.`;
-    const weekday = weekdays[dateObj.getDay()];
 
-    // Calculate the yield for the day. If min or max is untouched, yield is 0.
-    const stats = dailyStats[key];
-    let dailyYield = 0;
-    if (stats.min !== Infinity && stats.max !== -Infinity) {
-      dailyYield = stats.max - stats.min;
-      // Safeguard against reset bugs or weird data where max < min
-      if (dailyYield < 0) dailyYield = 0;
-    }
+    // Sync today's live status with daily outputs aggregation map
+    syncTodayOutputWithLiveStatus();
 
-    return {
-      day: key,
-      shortLabel: label,
-      weekday,
-      val: dailyYield
-    };
-  });
-}
-
-function drawSolarYield10DaysChart() {
-  const svg = document.getElementById("solar-yield-10days-svg");
-  const barsGroup = document.getElementById("bars-group");
-  const labelsGroup = document.getElementById("labels-group");
-  if (!svg || !barsGroup || !labelsGroup) return;
-
-  const dataYield = solarYield10DaysHistory.length > 0 ? solarYield10DaysHistory : getMockHistory("yield");
-  const dailyData = getDailyYieldValues(dataYield);
-
-  const w = 500;
-  const h = 220;
-  
-  const padLeft = 55;
-  const padRight = 20;
-  const padTop = 20;
-  const padBottom = 50;
-  
-  const chartW = w - padLeft - padRight;
-  const chartH = h - padTop - padBottom;
-
-  const maxVal = Math.max(...dailyData.map(d => d.val), 1) * 1.1;
-
-  barsGroup.innerHTML = "";
-  labelsGroup.innerHTML = "";
-
-  const slotWidth = chartW / 10;
-  const barWidth = slotWidth * 0.65;
-  const barGap = slotWidth * 0.35;
-
-  for (let i = 0; i < dailyData.length; i++) {
-    const d = dailyData[i];
-    const x = padLeft + i * slotWidth + barGap / 2;
-    const yPct = maxVal > 0 ? d.val / maxVal : 0;
-    const barHeight = yPct * chartH;
-    const y = padTop + chartH - barHeight;
+    // Render UI Updates with actual loaded data only
+    renderDashboardUI();
     
-    // Create rect for bar
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", x.toFixed(1));
-    rect.setAttribute("y", y.toFixed(1));
-    rect.setAttribute("width", barWidth.toFixed(1));
-    rect.setAttribute("height", Math.max(2, barHeight).toFixed(1));
-    rect.setAttribute("rx", 4);
-    rect.setAttribute("fill", "url(#solar-yield-gradient)");
-    rect.setAttribute("class", "chart-bar");
-    
-    // Tooltip
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    title.textContent = `${d.weekday} ${d.shortLabel}: ${d.val.toFixed(2)} kWh`;
-    rect.appendChild(title);
-    
-    barsGroup.appendChild(rect);
-    
-    // Create value label on top
-    if (d.val > 0) {
-      const valText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      valText.setAttribute("x", (x + barWidth / 2).toFixed(1));
-      valText.setAttribute("y", (y - 6).toFixed(1));
-      valText.setAttribute("class", "chart-label value-label");
-      valText.setAttribute("text-anchor", "middle");
-      valText.textContent = d.val.toFixed(1);
-      labelsGroup.appendChild(valText);
+    if (successCount > 0) {
+      updateBadge("connected", "Verbunden");
+      hideStatusBanner();
+    } else {
+      updateBadge("disconnected", "Nicht verbunden");
+      showStatusBanner("Keine Live-Daten geladen. Bitte System ID & API-Key in den Einstellungen prüfen.", "error");
     }
     
-    // Create X-axis label (weekday)
-    const weekdayText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    weekdayText.setAttribute("x", (x + barWidth / 2).toFixed(1));
-    weekdayText.setAttribute("y", 192);
-    weekdayText.setAttribute("class", "chart-label x-label");
-    weekdayText.setAttribute("text-anchor", "middle");
-    weekdayText.textContent = d.weekday;
-    labelsGroup.appendChild(weekdayText);
-    
-    // Create X-axis label (date)
-    const dateText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    dateText.setAttribute("x", (x + barWidth / 2).toFixed(1));
-    dateText.setAttribute("y", 205);
-    dateText.setAttribute("class", "chart-label x-label date-label");
-    dateText.setAttribute("text-anchor", "middle");
-    dateText.textContent = d.shortLabel;
-    labelsGroup.appendChild(dateText);
+  } catch (err) {
+    console.error("PVOutput Fetch Error:", err);
+    renderDashboardUI();
+    updateBadge("disconnected", "Nicht verbunden");
+    showStatusBanner("Verbindungsfehler. Bitte System ID & API-Key in den Einstellungen prüfen.", "error");
+  } finally {
+    state.isFetching = false;
   }
-
-  // Update Y-axis labels
-  const maxLabel = document.getElementById("yield-10days-y-max");
-  const midLabel = document.getElementById("yield-10days-y-mid");
-  if (maxLabel) maxLabel.textContent = `${maxVal.toFixed(1)} kWh`;
-  if (midLabel) midLabel.textContent = `${(maxVal / 2).toFixed(1)} kWh`;
 }
 
-// Beautiful Simulated Data for Demo and Offline modes
-function loadMockData() {
-  console.log("Lade simulierte Demodaten für die Anzeige...");
+// Sync today's live status energy with outputData daily list
+function syncTodayOutputWithLiveStatus() {
+  if (!state.liveStatus || !state.liveStatus.date) return;
   
-  // Set current states
-  stateCache["sensor.solar_share"] = { state: "78" };
-  stateCache["sensor.solaranlage_energy_power_2"] = { state: "1350" };
-  stateCache["weather.forecast_m75"] = {
-    state: "partlycloudy",
-    attributes: { temperature: 31.4, humidity: 42 }
+  const todayStr = state.liveStatus.date;
+  const liveKwh = state.liveStatus.energyWh / 1000;
+  
+  let existing = state.outputData.d.find(item => item.dateStr === todayStr);
+  if (existing) {
+    existing.energyWh = Math.max(existing.energyWh, state.liveStatus.energyWh);
+    existing.energyKwh = existing.energyWh / 1000;
+    if (state.liveStatus.powerW > existing.peakPowerW) {
+      existing.peakPowerW = state.liveStatus.powerW;
+    }
+  } else {
+    state.outputData.d.push({
+      dateStr: todayStr,
+      energyWh: state.liveStatus.energyWh,
+      energyKwh: liveKwh,
+      efficiency: state.liveStatus.efficiency || 0,
+      peakPowerW: state.liveStatus.powerW || 0,
+      peakTime: state.liveStatus.time || "",
+      condition: ""
+    });
+    state.outputData.d.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+    state.outputData.d = state.outputData.d.slice(-30);
+  }
+}
+
+// CSV Parsers
+function parseLiveStatus(raw) {
+  // Single status row: Date, Time, EnergyGen(Wh), PowerGen(W), EnergyExp(Wh), PowerExp(W), Efficiency(kWh/kW), Temp(C)
+  const parts = raw.split(",");
+  if (parts.length < 4) return null;
+  
+  return {
+    date: parts[0],
+    time: parts[1],
+    energyWh: parseFloat(parts[2]) || 0,
+    powerW: parseFloat(parts[3]) || 0,
+    efficiency: parts[6] && !isNaN(parts[6]) ? parseFloat(parts[6]) : 0,
+    tempC: parts[7] && !isNaN(parts[7]) ? parseFloat(parts[7]) : null
   };
-  stateCache["sensor.co2_signal_co2_intensity"] = { state: "185.2" };
-  stateCache["sensor.co2_signal_grid_fossil_fuel_percentage"] = { state: "15.4" };
-  stateCache["sensor.altpapier_9449"] = { state: "8" };
-  stateCache["sensor.bio_9449"] = { state: "1" };
-  stateCache["sensor.gelbe_tonne_9449"] = { state: "14" };
-  stateCache["sensor.restabfall_9449"] = { state: "3" };
-  stateCache["sensor.m75_solarertrag_taglich"] = { state: "6.82" };
-  stateCache["sensor.m75_solarertrag_wochentlich"] = { state: "48.15" };
-  stateCache["sensor.m75_solarertrag_monatlich"] = { state: "192.40" };
-  stateCache["sensor.m75_solarertrag_jahrlich"] = { state: "2480.12" };
-  stateCache["sensor.solaranlage_energy_today_2"] = { state: "6.85" };
-  
-  updateDashboardUI();
-  
-  // Render mock charts
-  drawSolarChart();
-  drawGridChart();
-  drawSolarYield10DaysChart();
 }
 
-function getMockHistory(type) {
-  const points = type === "yield" ? 10 * 24 : 24; // 10 days of hourly points or 24 hours
-  const list = [];
-  const now = Date.now();
+function parseIntradayHistory(raw) {
+  // History status rows separated by ';'
+  // Format: Date, Time, EnergyGen(Wh), Efficiency, PowerGen(W), EnergyExp(Wh), PowerExp(W), Voltage, Consumed, Temp(C)...
+  const rows = raw.split(";").filter(r => r.trim());
+  const points = [];
   
-  if (type === "yield") {
-    let currentDailyYield = 0;
-    for (let i = points; i >= 0; i--) {
-      const time = now - i * 60 * 60 * 1000;
-      const date = new Date(time);
-      const hour = date.getHours();
-      
-      // Reset at midnight
-      if (hour === 0) {
-        currentDailyYield = 0;
-      } else if (hour >= 6 && hour <= 18) {
-        // Let's add some solar yield
-        // Total daily yield can be between 3 and 15 kWh depending on day
-        const daySeed = date.getDate();
-        const maxDaily = 1 + (daySeed % 3) * 0.5 + Math.random(); // range 1 to 3 kWh
-        
-        // Accumulate hourly yield using sine
-        const hourlyIncrease = maxDaily * (Math.PI / 12) * Math.sin(Math.PI * (hour - 6) / 12) / 2;
-        currentDailyYield += Math.max(0, hourlyIncrease);
-      }
-      
-      list.push({ time, val: parseFloat(currentDailyYield.toFixed(3)) });
+  for (const row of rows) {
+    const p = row.split(",");
+    if (p.length >= 5) {
+      points.push({
+        date: p[0],
+        time: p[1],
+        energyWh: parseFloat(p[2]) || 0,
+        efficiency: parseFloat(p[3]) || 0,
+        powerW: parseFloat(p[4]) || 0,
+        tempC: p[9] && !isNaN(p[9]) ? parseFloat(p[9]) : null
+      });
     }
-    return list;
   }
   
-  for (let i = points; i >= 0; i--) {
-    const time = now - i * 60 * 60 * 1000;
-    const hour = new Date(time).getHours();
-    
-    let val = 0;
-    if (type === "actual") {
-      if (hour >= 6 && hour <= 18) {
-        val = 1500 * Math.sin(Math.PI * (hour - 6) / 12) + (Math.random() - 0.5) * 150;
-      }
-    } else if (type === "forecast") {
-      if (hour >= 6 && hour <= 18) {
-        val = 1420 * Math.sin(Math.PI * (hour - 6) / 12);
-      }
-    } else if (type === "grid") {
-      const baseLoad = 800 + (Math.random() - 0.5) * 200;
-      const cookingPeak = (hour >= 7 && hour <= 9) || (hour >= 18 && hour <= 20) ? 1200 : 0;
-      const solarOffset = (hour >= 8 && hour <= 17) ? 800 * Math.sin(Math.PI * (hour - 8) / 9) : 0;
-      val = baseLoad + cookingPeak - solarOffset;
-    }
-    
-    list.push({ time, val: Math.max(-500, Math.round(val)) });
-  }
-  return list;
+  return points.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
 }
 
-// Start application
-init();
+function parseOutputRows(raw) {
+  // getoutput.jsp returns daily rows separated by ';'
+  // Format: Date, EnergyGen(Wh), Efficiency(kWh/kW), EnergyExp(Wh), EnergyCons(Wh), PeakPower(W), PeakTime, Condition...
+  const rows = raw.split(";").filter(r => r.trim());
+  const outputs = [];
+  
+  for (const row of rows) {
+    const p = row.split(",");
+    if (p.length >= 3) {
+      outputs.push({
+        dateStr: p[0],
+        energyWh: parseFloat(p[1]) || 0,
+        energyKwh: (parseFloat(p[1]) || 0) / 1000,
+        efficiency: parseFloat(p[2]) || 0,
+        peakPowerW: parseFloat(p[5]) || parseFloat(p[4]) || 0,
+        peakTime: p[6] || p[5] || "",
+        condition: p[7] || p[6] || ""
+      });
+    }
+  }
+  
+  return outputs.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+}
+
+// Compute Weekly, Monthly, and Yearly aggregations from daily output rows
+function computeOutputAggregations(dailyRows) {
+  state.outputData.d = dailyRows.slice(-30); // Last 30 days
+  
+  // Group by Weekly (ISO Week)
+  const weeksMap = {};
+  dailyRows.forEach(item => {
+    const weekKey = getWeekKey(item.dateStr);
+    if (!weeksMap[weekKey]) {
+      weeksMap[weekKey] = { dateStr: item.dateStr, weekKey, energyKwh: 0, peakPowerW: 0, efficiencySum: 0, count: 0 };
+    }
+    weeksMap[weekKey].energyKwh += item.energyKwh;
+    weeksMap[weekKey].peakPowerW = Math.max(weeksMap[weekKey].peakPowerW, item.peakPowerW);
+    weeksMap[weekKey].efficiencySum += item.efficiency;
+    weeksMap[weekKey].count += 1;
+  });
+  
+  state.outputData.w = Object.values(weeksMap).map(w => ({
+    ...w,
+    efficiency: w.count > 0 ? w.efficiencySum / w.count : 0
+  })).slice(-12);
+  
+  // Group by Monthly (YYYY-MM)
+  const monthsMap = {};
+  dailyRows.forEach(item => {
+    const monthKey = item.dateStr.substring(0, 6);
+    if (!monthsMap[monthKey]) {
+      monthsMap[monthKey] = { dateStr: item.dateStr, monthKey, energyKwh: 0, peakPowerW: 0, efficiencySum: 0, count: 0 };
+    }
+    monthsMap[monthKey].energyKwh += item.energyKwh;
+    monthsMap[monthKey].peakPowerW = Math.max(monthsMap[monthKey].peakPowerW, item.peakPowerW);
+    monthsMap[monthKey].efficiencySum += item.efficiency;
+    monthsMap[monthKey].count += 1;
+  });
+  
+  state.outputData.m = Object.values(monthsMap).map(m => ({
+    ...m,
+    efficiency: m.count > 0 ? m.efficiencySum / m.count : 0
+  })).slice(-12);
+  
+  // Group by Yearly (YYYY)
+  const yearsMap = {};
+  dailyRows.forEach(item => {
+    const yearKey = item.dateStr.substring(0, 4);
+    if (!yearsMap[yearKey]) {
+      yearsMap[yearKey] = { dateStr: item.dateStr, yearKey, energyKwh: 0, peakPowerW: 0, efficiencySum: 0, count: 0 };
+    }
+    yearsMap[yearKey].energyKwh += item.energyKwh;
+    yearsMap[yearKey].peakPowerW = Math.max(yearsMap[yearKey].peakPowerW, item.peakPowerW);
+    yearsMap[yearKey].efficiencySum += item.efficiency;
+    yearsMap[yearKey].count += 1;
+  });
+  
+  state.outputData.y = Object.values(yearsMap).map(y => ({
+    ...y,
+    efficiency: y.count > 0 ? y.efficiencySum / y.count : 0
+  }));
+}
+
+function parseStatistic(raw) {
+  // getstatistic.jsp format: TotalWh, ExportedWh, ImportedWh, ConsumedWh, PeakPowerW, AvgDailyKwh, MinDailyWh, StartDate, EndDate, MaxDailyKwh, MaxDailyDate
+  const p = raw.split(",");
+  if (p.length < 10) return null;
+  
+  return {
+    totalEnergyKwh: (parseFloat(p[0]) || 0) / 1000,
+    peakPowerW: parseFloat(p[4]) || 0,
+    avgDailyKwh: parseFloat(p[5]) || 0,
+    maxDailyKwh: parseFloat(p[9]) || 0,
+    maxDailyDate: p[10] || p[9] || "",
+    outputsCount: state.rawDailyOutputs ? state.rawDailyOutputs.length : 0
+  };
+}
+
+function parseSystemInfo(raw) {
+  // getsystem.jsp format: SystemName, Capacity(W), ExportCap, Panels, PanelCap, PanelBrand, Inverters, InverterCap, InverterBrand...
+  const p = raw.split(",");
+  if (p.length < 8) return null;
+  
+  return {
+    name: p[0] || "--",
+    capacityWp: p[1] || "--",
+    panels: `${p[3] || "--"}x ${p[5] || "--"} (${p[4] || "--"} W)`,
+    inverter: `${p[6] || "--"}x ${p[8] || "--"} (${p[7] || "--"} W)`
+  };
+}
+
+// Energy Formatter (Wh for < 1000 Wh, 3 decimals for < 10 kWh)
+function formatEnergyDisplay(energyWh) {
+  if (energyWh === null || energyWh === undefined || isNaN(energyWh)) return "--";
+  if (Math.abs(energyWh) < 1000) {
+    return `${Math.round(energyWh)} Wh`;
+  }
+  const kwh = energyWh / 1000;
+  if (kwh < 10) {
+    return `${kwh.toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kWh`;
+  }
+  return `${kwh.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh`;
+}
+
+// UI Renderer
+function renderDashboardUI() {
+  const todayStr = state.liveStatus ? state.liveStatus.date : formatTodayYYYYMMDD();
+  let todayOutput = state.outputData.d.find(item => item.dateStr === todayStr);
+  if (!todayOutput && state.outputData.d.length > 0) {
+    todayOutput = state.outputData.d[state.outputData.d.length - 1];
+  }
+
+  const liveOrTodayWh = state.liveStatus ? Math.max(state.liveStatus.energyWh, todayOutput ? todayOutput.energyWh : 0) : (todayOutput ? todayOutput.energyWh : null);
+
+  // 1. Update Live Card & Header
+  if (state.liveStatus) {
+    elements.livePowerVal.textContent = Math.round(state.liveStatus.powerW).toLocaleString("de-DE");
+    elements.liveTodayKwh.textContent = formatEnergyDisplay(liveOrTodayWh);
+    const dateFormatted = formatGermanDate(state.liveStatus.date);
+    elements.liveTime.textContent = dateFormatted !== "--" ? `Stand: ${dateFormatted}, ${state.liveStatus.time} Uhr` : `Stand: ${state.liveStatus.time} Uhr`;
+    elements.liveEfficiency.textContent = state.liveStatus.efficiency > 0 ? `${state.liveStatus.efficiency.toFixed(2)} kWh/kW` : "-- kWh/kW";
+    elements.liveTemp.textContent = state.liveStatus.tempC !== null ? `${state.liveStatus.tempC.toFixed(1)} °C` : "-- °C";
+  } else {
+    elements.livePowerVal.textContent = "--";
+    elements.liveTodayKwh.textContent = "--";
+    elements.liveTime.textContent = "Stand: --:-- Uhr";
+    elements.liveEfficiency.textContent = "-- kWh/kW";
+    elements.liveTemp.textContent = "-- °C";
+  }
+  
+  // Today's Peak Power & Weather
+  if (todayOutput) {
+    elements.livePeakPower.textContent = todayOutput.peakPowerW ? `${todayOutput.peakPowerW} W` : "-- W";
+    elements.livePeakTime.textContent = todayOutput.peakTime ? `um ${todayOutput.peakTime} Uhr` : "--:-- Uhr";
+    
+    const condLower = (todayOutput.condition || "").toLowerCase();
+    elements.liveCondition.textContent = WEATHER_GERMAN[condLower] || todayOutput.condition || "--";
+  } else {
+    elements.livePeakPower.textContent = "-- W";
+    elements.livePeakTime.textContent = "--:-- Uhr";
+    elements.liveCondition.textContent = "--";
+  }
+  
+  // 2. Update Yield Summary Tiles
+  if (liveOrTodayWh !== null) {
+    if (Math.abs(liveOrTodayWh) < 1000) {
+      elements.summaryDay.textContent = Math.round(liveOrTodayWh).toString();
+      if (elements.summaryDayUnit) elements.summaryDayUnit.textContent = "Wh";
+    } else {
+      const kwh = liveOrTodayWh / 1000;
+      elements.summaryDay.textContent = kwh.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (elements.summaryDayUnit) elements.summaryDayUnit.textContent = "kWh";
+    }
+  } else {
+    elements.summaryDay.textContent = "--";
+    if (elements.summaryDayUnit) elements.summaryDayUnit.textContent = "kWh";
+  }
+  
+  if (state.outputData.d.length > 0) {
+    const last7 = state.outputData.d.slice(-7);
+    const sumWeek = last7.reduce((acc, curr) => acc + curr.energyKwh, 0);
+    elements.summaryWeek.textContent = sumWeek.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  } else {
+    elements.summaryWeek.textContent = "--";
+  }
+  
+  if (state.outputData.m.length > 0) {
+    const currentMonth = state.outputData.m[state.outputData.m.length - 1];
+    elements.summaryMonth.textContent = currentMonth.energyKwh.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  } else {
+    elements.summaryMonth.textContent = "--";
+  }
+  
+  if (state.outputData.y.length > 0) {
+    const currentYear = state.outputData.y[state.outputData.y.length - 1];
+    elements.summaryYear.textContent = currentYear.energyKwh.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  } else {
+    elements.summaryYear.textContent = "--";
+  }
+  
+  // 3. Render Charts
+  renderIntradayChart();
+  renderHistoryChart();
+  
+  // 4. Update Lifetime Stats & System Configuration
+  if (state.statistic) {
+    elements.statTotalEnergy.textContent = `${Math.round(state.statistic.totalEnergyKwh).toLocaleString("de-DE")} kWh`;
+    elements.statAvgDaily.textContent = `${state.statistic.avgDailyKwh.toFixed(2).replace(".", ",")} kWh/Tag`;
+    elements.statMaxDaily.textContent = `${state.statistic.maxDailyKwh.toFixed(2).replace(".", ",")} kWh`;
+    elements.statMaxDailyDate.textContent = `Datum: ${formatGermanDate(state.statistic.maxDailyDate)}`;
+    elements.statOutputsCount.textContent = `${state.statistic.outputsCount.toLocaleString("de-DE")} Tage`;
+  } else {
+    elements.statTotalEnergy.textContent = "-- kWh";
+    elements.statAvgDaily.textContent = "-- kWh/Tag";
+    elements.statMaxDaily.textContent = "-- kWh";
+    elements.statMaxDailyDate.textContent = "Datum: --";
+    elements.statOutputsCount.textContent = "-- Tage";
+  }
+  
+  if (state.systemInfo) {
+    elements.sysName.textContent = state.systemInfo.name || "--";
+    elements.sysSize.textContent = state.systemInfo.capacityWp ? `${state.systemInfo.capacityWp} Wp` : "--";
+    elements.sysPanels.textContent = state.systemInfo.panels || "--";
+    elements.sysInverter.textContent = state.systemInfo.inverter || "--";
+  } else {
+    elements.sysName.textContent = "--";
+    elements.sysSize.textContent = "-- Wp";
+    elements.sysPanels.textContent = "--";
+    elements.sysInverter.textContent = "--";
+  }
+}
+
+// Chart Instances Store
+let intradayChartInstance = null;
+let historyChartInstance = null;
+
+// -------------------------------------------------------------
+// Interactive Chart.js Renderer: Heutiger 24h Verlauf
+// -------------------------------------------------------------
+function renderIntradayChart() {
+  const canvas = elements.intradayChartCanvas;
+  if (!canvas || !window.Chart) return;
+  
+  const data = state.intradayHistory;
+  if (!data || data.length === 0) {
+    elements.intradayMaxVal.textContent = "-- W";
+    if (intradayChartInstance) {
+      intradayChartInstance.destroy();
+      intradayChartInstance = null;
+    }
+    return;
+  }
+
+  const maxPower = Math.max(0, ...data.map(d => d.powerW));
+  elements.intradayMaxVal.textContent = `${Math.round(maxPower)} W`;
+
+  const labels = data.map(d => d.time);
+  const values = data.map(d => d.powerW);
+
+  if (intradayChartInstance) {
+    intradayChartInstance.data.labels = labels;
+    intradayChartInstance.data.datasets[0].data = values;
+    intradayChartInstance.update();
+    return;
+  }
+
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+  gradient.addColorStop(0, "rgba(245, 158, 11, 0.45)");
+  gradient.addColorStop(1, "rgba(245, 158, 11, 0.0)");
+
+  intradayChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Leistung (W)",
+        data: values,
+        borderColor: "#f59e0b",
+        borderWidth: 2.5,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: "#fbbf24"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "rgba(11, 15, 25, 0.95)",
+          borderColor: "#f59e0b",
+          borderWidth: 1,
+          titleColor: "#fbbf24",
+          bodyColor: "#f8fafc",
+          callbacks: {
+            label: (ctx) => `Leistung: ${Math.round(ctx.parsed.y)} W`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          ticks: { color: "#94a3b8", maxTicksLimit: 8, font: { family: "Plus Jakarta Sans" } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "rgba(255, 255, 255, 0.08)" },
+          ticks: {
+            color: "#cbd5e1",
+            font: { family: "Plus Jakarta Sans" },
+            callback: (val) => `${val} W`
+          }
+        }
+      }
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// Interactive Chart.js Renderer: Aggregierter Ertrag (Balkendiagramm)
+// -------------------------------------------------------------
+function renderHistoryChart() {
+  const canvas = elements.historyChartCanvas;
+  if (!canvas || !window.Chart) return;
+
+  const gran = state.activeGranularity;
+  const list = state.outputData[gran] || [];
+
+  const titles = {
+    d: "Solarertrags-Historie (Täglich - Letzte 30 Tage)",
+    w: "Solarertrags-Historie (Wöchentlich - Letzte 12 Wochen)",
+    m: "Solarertrags-Historie (Monatlich - Letzte 12 Monate)",
+    y: "Solarertrags-Historie (Jährlich - Alle Jahre)"
+  };
+  elements.historyChartTitle.textContent = titles[gran] || "Solarertrags-Historie";
+
+  if (!list || list.length === 0) {
+    elements.historySummaryText.textContent = "Keine Daten verfügbar.";
+    elements.historyTotalText.textContent = "Gesamtsumme: -- kWh";
+    if (historyChartInstance) {
+      historyChartInstance.destroy();
+      historyChartInstance = null;
+    }
+    return;
+  }
+
+  const totalKwh = list.reduce((acc, curr) => acc + curr.energyKwh, 0);
+  const avgKwh = totalKwh / list.length;
+  elements.historySummaryText.textContent = `Durchschnitt: ${avgKwh.toFixed(1).replace(".", ",")} kWh pro Periode`;
+  elements.historyTotalText.textContent = `Gesamtsumme: ${Math.round(totalKwh).toLocaleString("de-DE")} kWh`;
+
+  const labels = list.map(item => formatGranularDateLabel(item.dateStr, gran, item.weekKey, item.monthKey, item.yearKey));
+  const values = list.map(item => Number(item.energyKwh.toFixed(2)));
+
+  if (historyChartInstance) {
+    historyChartInstance.data.labels = labels;
+    historyChartInstance.data.datasets[0].data = values;
+    historyChartInstance.update();
+    return;
+  }
+
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+  gradient.addColorStop(0, "#fbbf24");
+  gradient.addColorStop(1, "#d97706");
+
+  historyChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Ertrag (kWh)",
+        data: values,
+        backgroundColor: gradient,
+        borderRadius: 5,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "rgba(11, 15, 25, 0.95)",
+          borderColor: "#f59e0b",
+          borderWidth: 1,
+          titleColor: "#fbbf24",
+          bodyColor: "#f8fafc",
+          callbacks: {
+            label: (ctx) => `Ertrag: ${ctx.parsed.y.toFixed(2).replace(".", ",")} kWh`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: "#94a3b8", maxTicksLimit: 12, font: { family: "Plus Jakarta Sans" } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "rgba(255, 255, 255, 0.08)" },
+          ticks: {
+            color: "#cbd5e1",
+            font: { family: "Plus Jakarta Sans" },
+            callback: (val) => `${val} kWh`
+          }
+        }
+      }
+    }
+  });
+}
+
+// Helpers & Formatters
+function updateBadge(mode, text) {
+  elements.connPill.className = `badge badge-${mode}`;
+  elements.connPill.textContent = text;
+}
+
+function showStatusBanner(msg, type = "info") {
+  elements.statusBanner.style.display = "block";
+  elements.statusBannerText.textContent = msg;
+}
+
+function hideStatusBanner() {
+  elements.statusBanner.style.display = "none";
+}
+
+function formatTodayYYYYMMDD() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
+}
+
+function formatGermanDate(str) {
+  if (!str || str.length < 8) return str || "--";
+  const yyyy = str.substring(0, 4);
+  const mm = str.substring(4, 6);
+  const dd = str.substring(6, 8);
+  return `${dd}.${mm}.${yyyy}`;
+}
+
+function formatGranularDateLabel(str, gran, weekKey, monthKey, yearKey) {
+  if (gran === "d") {
+    if (!str || str.length < 8) return str;
+    return `${str.substring(6, 8)}.${str.substring(4, 6)}.`;
+  }
+  if (gran === "w") return weekKey ? weekKey.replace(/^.*-W/, "KW ") : `KW ${getWeekNumber(str)}`;
+  if (gran === "m") {
+    const mm = monthKey ? monthKey.substring(4, 6) : (str ? str.substring(4, 6) : "");
+    return getMonthNameShort(mm);
+  }
+  if (gran === "y") return yearKey || (str ? str.substring(0, 4) : "");
+  return str;
+}
+
+function formatGermanDateLong(str, gran, weekKey, monthKey, yearKey) {
+  if (gran === "d") return formatGermanDate(str);
+  if (gran === "w") {
+    const kw = weekKey ? weekKey.replace(/^.*-W/, "KW ") : `KW ${getWeekNumber(str)}`;
+    return `${kw} (${formatGermanDate(str)})`;
+  }
+  if (gran === "m") {
+    const mm = monthKey ? monthKey.substring(4, 6) : (str ? str.substring(4, 6) : "");
+    const yyyy = monthKey ? monthKey.substring(0, 4) : (str ? str.substring(0, 4) : "");
+    return `${getMonthNameLong(mm)} ${yyyy}`;
+  }
+  if (gran === "y") return `Jahr ${yearKey || (str ? str.substring(0, 4) : "")}`;
+  return str;
+}
+
+function getWeekKey(str) {
+  if (!str || str.length < 8) return str;
+  const yyyy = str.substring(0, 4);
+  const kw = getWeekNumber(str);
+  return `${yyyy}-W${String(kw).padStart(2, '0')}`;
+}
+
+function getWeekNumber(str) {
+  if (!str || str.length < 8) return "";
+  const date = new Date(parseInt(str.substring(0,4)), parseInt(str.substring(4,6)) - 1, parseInt(str.substring(6,8)));
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function getMonthNameShort(mm) {
+  const months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+  return months[parseInt(mm, 10) - 1] || mm;
+}
+
+function getMonthNameLong(mm) {
+  const months = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  return months[parseInt(mm, 10) - 1] || mm;
+}
