@@ -305,23 +305,35 @@ async function fetchPVOutput(endpoint, queryParams = {}) {
   for (const proxy of proxyCandidates) {
     try {
       const res = await fetchWithTimeout(proxy.url, { cache: "no-store" }, 2500);
-      if (res.ok) {
-        if (proxy.type === "allorigins-json") {
-          const json = await res.json();
-          if (json && json.contents) {
-            const contents = json.contents.trim();
-            if (contents.includes("Exceeded 60 requests")) isRateLimited = true;
-            if (isValidPVOutputResponse(contents)) {
-              return contents;
-            }
-          }
-        } else {
-          const text = await res.text();
-          if (text.includes("Exceeded 60 requests")) isRateLimited = true;
-          if (isValidPVOutputResponse(text)) {
-            return text.trim();
-          }
+      let text = "";
+
+      if (proxy.type === "allorigins-json") {
+        if (res.ok) {
+          try {
+            const json = await res.json();
+            text = (json && json.contents) ? json.contents.trim() : "";
+          } catch (_) {}
         }
+      } else {
+        try {
+          text = await res.text();
+        } catch (_) {}
+      }
+
+      if (
+        res.status === 429 ||
+        (text && (
+          text.includes("Exceeded 60 requests") ||
+          text.includes("Rate Limit Exceeded") ||
+          text.startsWith("Err 400: Exceeded") ||
+          /exceeded \d+ requests/i.test(text)
+        ))
+      ) {
+        isRateLimited = true;
+      }
+
+      if (res.ok && isValidPVOutputResponse(text)) {
+        return text.trim();
       }
     } catch (err) {
       console.warn(`Proxy Attempt (${proxy.url}) failed:`, err);
@@ -433,7 +445,11 @@ async function loadAllDashboardData(manual = false) {
 
     if (rateLimitHit) {
       updateBadge("connecting", "API-Limit erreicht");
-      showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Nächste automatische Aktualisierung in 5 Min.", "warning");
+      if (successCount === 0) {
+        showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Es konnten keine Daten geladen werden. Bitte später erneut versuchen oder eigenen Proxy/API-Key prüfen.", "warning");
+      } else {
+        showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Nächste automatische Aktualisierung in 5 Min.", "warning");
+      }
     } else if (successCount > 0) {
       updateBadge("connected", "Verbunden");
       hideStatusBanner();
@@ -445,8 +461,13 @@ async function loadAllDashboardData(manual = false) {
   } catch (err) {
     console.error("PVOutput Fetch Error:", err);
     renderDashboardUI();
-    updateBadge("disconnected", "Nicht verbunden");
-    showStatusBanner("CORS/Netzwerkfehler beim Datenabruf. Bitte eigenen Proxy in den Einstellungen konfigurieren.", "error");
+    if (err.message === "RATE_LIMIT_EXCEEDED") {
+      updateBadge("connecting", "API-Limit erreicht");
+      showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Es konnten keine Daten geladen werden. Bitte später erneut versuchen oder eigenen Proxy/API-Key prüfen.", "warning");
+    } else {
+      updateBadge("disconnected", "Nicht verbunden");
+      showStatusBanner("CORS/Netzwerkfehler beim Datenabruf. Bitte eigenen Proxy in den Einstellungen konfigurieren.", "error");
+    }
   } finally {
     state.isFetching = false;
   }
@@ -946,6 +967,7 @@ function updateBadge(mode, text) {
 }
 
 function showStatusBanner(msg, type = "info") {
+  elements.statusBanner.className = `status-banner status-${type}`;
   elements.statusBanner.style.display = "block";
   elements.statusBannerText.textContent = msg;
 }

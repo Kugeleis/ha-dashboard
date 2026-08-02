@@ -45,7 +45,10 @@ nav ul li { padding: 0; }
 .badge-connected { background: rgba(16, 185, 129, 0.15); color: var(--emerald-green); border: 1px solid rgba(16, 185, 129, 0.3); }
 .badge-connecting { background: rgba(245, 158, 11, 0.15); color: var(--solar-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
 
-.status-banner { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--solar-gold); padding: 0.6rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.85rem; text-align: center; }
+.status-banner { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--solar-gold); padding: 0.6rem 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1.25rem; font-size: 0.85rem; text-align: center; }
+.status-banner.status-warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: var(--solar-amber); }
+.status-banner.status-error { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: var(--pico-del-color); }
+.status-banner.status-info { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: var(--pico-primary); }
 
 /* Cards & Layout */
 article.dash-card { margin-bottom: 1.25rem; padding: 0; border: 1px solid var(--pico-card-border-color); backdrop-filter: blur(12px); overflow: hidden; }
