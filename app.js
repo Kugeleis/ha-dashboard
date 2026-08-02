@@ -30,7 +30,7 @@ const WEATHER_GERMAN = {
 function resolveCredentials() {
   const urlParams = new URLSearchParams(window.location.search);
   const windowEnv = window.ENV || {};
-  
+
   const sid = urlParams.get("sid") || urlParams.get("systemId") || localStorage.getItem("pv_sys_id") || windowEnv.SYSTEM_ID || DEFAULTS.systemId;
   const key = urlParams.get("key") || urlParams.get("apiKey") || localStorage.getItem("pv_api_key") || windowEnv.API_KEY || DEFAULTS.apiKey;
   const proxy = urlParams.get("proxy") || urlParams.get("proxyUrl") || localStorage.getItem("pv_proxy_url") || windowEnv.PROXY_URL || DEFAULTS.proxyUrl;
@@ -50,7 +50,7 @@ const state = {
   apiKey: initialCreds.apiKey,
   proxyUrl: initialCreds.proxyUrl,
   refreshInterval: parseInt(localStorage.getItem("pv_refresh_interval") || DEFAULTS.refreshInterval, 10),
-  
+
   // Data Cache
   liveStatus: null,
   intradayHistory: [],
@@ -63,7 +63,7 @@ const state = {
   },
   statistic: null,
   systemInfo: null,
-  
+
   // UI State
   activeGranularity: "d",
   refreshTimer: null,
@@ -78,7 +78,7 @@ const elements = {
   settingsBtn: document.getElementById("settings-btn"),
   statusBanner: document.getElementById("status-banner"),
   statusBannerText: document.getElementById("status-banner-text"),
-  
+
   // Live Card
   livePowerVal: document.getElementById("live-power-val"),
   liveTodayKwh: document.getElementById("live-today-kwh"),
@@ -88,7 +88,7 @@ const elements = {
   liveEfficiency: document.getElementById("live-efficiency"),
   liveTemp: document.getElementById("live-temp"),
   liveCondition: document.getElementById("live-condition"),
-  
+
   // Yield Summary Tiles
   summaryDay: document.getElementById("summary-yield-day"),
   summaryDayUnit: document.getElementById("summary-yield-day-unit"),
@@ -97,7 +97,7 @@ const elements = {
   summaryYear: document.getElementById("summary-yield-year"),  // Intraday & History Chart Canvas Elements
   intradayMaxVal: document.getElementById("intraday-max-val"),
   intradayChartCanvas: document.getElementById("intraday-chart"),
-  
+
   // History Chart & Tabs
   historyChartTitle: document.getElementById("history-chart-title"),
   tabButtons: document.querySelectorAll(".tab-btn"),
@@ -111,12 +111,12 @@ const elements = {
   statMaxDaily: document.getElementById("stat-max-daily"),
   statMaxDailyDate: document.getElementById("stat-max-daily-date"),
   statOutputsCount: document.getElementById("stat-outputs-count"),
-  
+
   sysName: document.getElementById("sys-name"),
   sysSize: document.getElementById("sys-size"),
   sysPanels: document.getElementById("sys-panels"),
   sysInverter: document.getElementById("sys-inverter"),
-  
+
   // Modal Elements
   settingsModal: document.getElementById("settings-modal"),
   settingsForm: document.getElementById("settings-form"),
@@ -177,46 +177,46 @@ function setupEventListeners() {
   elements.refreshBtn.addEventListener("click", () => {
     loadAllDashboardData(true);
   });
-  
+
   elements.settingsBtn.addEventListener("click", () => {
     elements.settingsModal.showModal();
   });
-  
+
   elements.modalCloseBtn.addEventListener("click", () => elements.settingsModal.close());
   elements.modalCancelBtn.addEventListener("click", () => elements.settingsModal.close());
-  
+
   elements.settingsForm.addEventListener("submit", (e) => {
     e.preventDefault();
     state.systemId = elements.inputSystemId.value.trim();
     state.apiKey = elements.inputApiKey.value.trim();
     state.proxyUrl = elements.inputProxyUrl.value.trim();
     state.refreshInterval = parseInt(elements.inputRefreshInterval.value, 10);
-    
+
     localStorage.setItem("pv_sys_id", state.systemId);
     localStorage.setItem("pv_api_key", state.apiKey);
     localStorage.setItem("pv_proxy_url", state.proxyUrl);
     localStorage.setItem("pv_refresh_interval", state.refreshInterval.toString());
-    
+
     elements.navSystemId.textContent = state.systemId;
     elements.settingsModal.close();
-    
+
     startAutoRefresh();
     loadAllDashboardData(true);
   });
-  
+
   // Tab Buttons for Granularity
   elements.tabButtons.forEach(btn => {
     btn.addEventListener("click", (e) => {
       const gran = e.target.getAttribute("data-granularity");
       if (!gran || gran === state.activeGranularity) return;
-      
+
       elements.tabButtons.forEach(b => {
         b.classList.remove("active");
         b.setAttribute("aria-selected", "false");
       });
       e.target.classList.add("active");
       e.target.setAttribute("aria-selected", "true");
-      
+
       state.activeGranularity = gran;
       renderHistoryChart();
     });
@@ -225,7 +225,7 @@ function setupEventListeners() {
 
 function startAutoRefresh() {
   if (state.refreshTimer) clearInterval(state.refreshTimer);
-  
+
   if (state.refreshInterval > 0) {
     state.refreshTimer = setInterval(() => {
       loadAllDashboardData(false);
@@ -257,11 +257,11 @@ async function fetchPVOutput(endpoint, queryParams = {}) {
     sid: state.systemId,
     ...queryParams
   });
-  
+
   const targetUrl = `https://pvoutput.org/service/r2/${endpoint}?${params.toString()}`;
-  
+
   const proxyCandidates = [];
-  
+
   // Custom user proxy if configured
   if (state.proxyUrl) {
     proxyCandidates.push({
@@ -269,7 +269,7 @@ async function fetchPVOutput(endpoint, queryParams = {}) {
       url: state.proxyUrl.includes("%s") ? state.proxyUrl.replace("%s", encodeURIComponent(targetUrl)) : `${state.proxyUrl}${encodeURIComponent(targetUrl)}`
     });
   }
-  
+
   // Candidate Proxies
   proxyCandidates.push({ type: "raw", url: targetUrl });
   proxyCandidates.push({ type: "raw", url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` });
@@ -300,7 +300,7 @@ async function fetchPVOutput(endpoint, queryParams = {}) {
       lastError = err;
     }
   }
-  
+
   throw lastError || new Error(`Konnte keine Verbindung zu ${endpoint} herstellen.`);
 }
 
@@ -314,12 +314,12 @@ async function loadAllDashboardData(manual = false) {
 
   if (state.isFetching) return;
   state.isFetching = true;
-  
+
   updateBadge("connecting", manual ? "Lade Daten..." : "Aktualisiere...");
   showStatusBanner("Lade Solardaten von PVOutput.org...", "info");
-  
+
   let successCount = 0;
-  
+
   try {
     // 1. Fetch Intraday 5-min history & Live Status in 1 request
     try {
@@ -358,7 +358,7 @@ async function loadAllDashboardData(manual = false) {
     } catch (e) {
       console.warn("getoutput.jsp fetch warning:", e);
     }
-    
+
     await delay(1500);
 
     // 3. Fetch Overall Statistic (only if missing or manual refresh)
@@ -393,7 +393,7 @@ async function loadAllDashboardData(manual = false) {
 
     // Render UI Updates with actual loaded data only
     renderDashboardUI();
-    
+
     if (successCount > 0) {
       updateBadge("connected", "Verbunden");
       hideStatusBanner();
@@ -401,7 +401,7 @@ async function loadAllDashboardData(manual = false) {
       updateBadge("disconnected", "Nicht verbunden");
       showStatusBanner("Keine Live-Daten geladen. Bitte System ID & API-Key in den Einstellungen prüfen.", "error");
     }
-    
+
   } catch (err) {
     console.error("PVOutput Fetch Error:", err);
     renderDashboardUI();
@@ -415,10 +415,10 @@ async function loadAllDashboardData(manual = false) {
 // Sync today's live status energy with outputData daily list
 function syncTodayOutputWithLiveStatus() {
   if (!state.liveStatus || !state.liveStatus.date) return;
-  
+
   const todayStr = state.liveStatus.date;
   const liveKwh = state.liveStatus.energyWh / 1000;
-  
+
   let existing = state.outputData.d.find(item => item.dateStr === todayStr);
   if (existing) {
     existing.energyWh = Math.max(existing.energyWh, state.liveStatus.energyWh);
@@ -446,7 +446,7 @@ function parseLiveStatus(raw) {
   // Single status row: Date, Time, EnergyGen(Wh), PowerGen(W), EnergyExp(Wh), PowerExp(W), Efficiency(kWh/kW), Temp(C)
   const parts = raw.split(",");
   if (parts.length < 4) return null;
-  
+
   return {
     date: parts[0],
     time: parts[1],
@@ -462,7 +462,7 @@ function parseIntradayHistory(raw) {
   // Format: Date, Time, EnergyGen(Wh), Efficiency, PowerGen(W), EnergyExp(Wh), PowerExp(W), Voltage, Consumed, Temp(C)...
   const rows = raw.split(";").filter(r => r.trim());
   const points = [];
-  
+
   for (const row of rows) {
     const p = row.split(",");
     if (p.length >= 5) {
@@ -476,7 +476,7 @@ function parseIntradayHistory(raw) {
       });
     }
   }
-  
+
   return points.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
 }
 
@@ -485,7 +485,7 @@ function parseOutputRows(raw) {
   // Format: Date, EnergyGen(Wh), Efficiency(kWh/kW), EnergyExp(Wh), EnergyCons(Wh), PeakPower(W), PeakTime, Condition...
   const rows = raw.split(";").filter(r => r.trim());
   const outputs = [];
-  
+
   for (const row of rows) {
     const p = row.split(",");
     if (p.length >= 3) {
@@ -500,14 +500,14 @@ function parseOutputRows(raw) {
       });
     }
   }
-  
+
   return outputs.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
 }
 
 // Compute Weekly, Monthly, and Yearly aggregations from daily output rows
 function computeOutputAggregations(dailyRows) {
   state.outputData.d = dailyRows.slice(-30); // Last 30 days
-  
+
   // Group by Weekly (ISO Week)
   const weeksMap = {};
   dailyRows.forEach(item => {
@@ -520,12 +520,12 @@ function computeOutputAggregations(dailyRows) {
     weeksMap[weekKey].efficiencySum += item.efficiency;
     weeksMap[weekKey].count += 1;
   });
-  
+
   state.outputData.w = Object.values(weeksMap).map(w => ({
     ...w,
     efficiency: w.count > 0 ? w.efficiencySum / w.count : 0
   })).slice(-12);
-  
+
   // Group by Monthly (YYYY-MM)
   const monthsMap = {};
   dailyRows.forEach(item => {
@@ -538,12 +538,12 @@ function computeOutputAggregations(dailyRows) {
     monthsMap[monthKey].efficiencySum += item.efficiency;
     monthsMap[monthKey].count += 1;
   });
-  
+
   state.outputData.m = Object.values(monthsMap).map(m => ({
     ...m,
     efficiency: m.count > 0 ? m.efficiencySum / m.count : 0
   })).slice(-12);
-  
+
   // Group by Yearly (YYYY)
   const yearsMap = {};
   dailyRows.forEach(item => {
@@ -556,7 +556,7 @@ function computeOutputAggregations(dailyRows) {
     yearsMap[yearKey].efficiencySum += item.efficiency;
     yearsMap[yearKey].count += 1;
   });
-  
+
   state.outputData.y = Object.values(yearsMap).map(y => ({
     ...y,
     efficiency: y.count > 0 ? y.efficiencySum / y.count : 0
@@ -567,7 +567,7 @@ function parseStatistic(raw) {
   // getstatistic.jsp format: TotalWh, ExportedWh, ImportedWh, ConsumedWh, PeakPowerW, AvgDailyKwh, MinDailyWh, StartDate, EndDate, MaxDailyKwh, MaxDailyDate
   const p = raw.split(",");
   if (p.length < 10) return null;
-  
+
   return {
     totalEnergyKwh: (parseFloat(p[0]) || 0) / 1000,
     peakPowerW: parseFloat(p[4]) || 0,
@@ -582,7 +582,7 @@ function parseSystemInfo(raw) {
   // getsystem.jsp format: SystemName, Capacity(W), ExportCap, Panels, PanelCap, PanelBrand, Inverters, InverterCap, InverterBrand...
   const p = raw.split(",");
   if (p.length < 8) return null;
-  
+
   return {
     name: p[0] || "--",
     capacityWp: p[1] || "--",
@@ -629,12 +629,12 @@ function renderDashboardUI() {
     elements.liveEfficiency.textContent = "-- kWh/kW";
     elements.liveTemp.textContent = "-- °C";
   }
-  
+
   // Today's Peak Power & Weather
   if (todayOutput) {
     elements.livePeakPower.textContent = todayOutput.peakPowerW ? `${todayOutput.peakPowerW} W` : "-- W";
     elements.livePeakTime.textContent = todayOutput.peakTime ? `um ${todayOutput.peakTime} Uhr` : "--:-- Uhr";
-    
+
     const condLower = (todayOutput.condition || "").toLowerCase();
     elements.liveCondition.textContent = WEATHER_GERMAN[condLower] || todayOutput.condition || "--";
   } else {
@@ -642,7 +642,7 @@ function renderDashboardUI() {
     elements.livePeakTime.textContent = "--:-- Uhr";
     elements.liveCondition.textContent = "--";
   }
-  
+
   // 2. Update Yield Summary Tiles
   if (liveOrTodayWh !== null) {
     if (Math.abs(liveOrTodayWh) < 1000) {
@@ -657,7 +657,7 @@ function renderDashboardUI() {
     elements.summaryDay.textContent = "--";
     if (elements.summaryDayUnit) elements.summaryDayUnit.textContent = "kWh";
   }
-  
+
   if (state.outputData.d.length > 0) {
     const last7 = state.outputData.d.slice(-7);
     const sumWeek = last7.reduce((acc, curr) => acc + curr.energyKwh, 0);
@@ -665,25 +665,25 @@ function renderDashboardUI() {
   } else {
     elements.summaryWeek.textContent = "--";
   }
-  
+
   if (state.outputData.m.length > 0) {
     const currentMonth = state.outputData.m[state.outputData.m.length - 1];
     elements.summaryMonth.textContent = currentMonth.energyKwh.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   } else {
     elements.summaryMonth.textContent = "--";
   }
-  
+
   if (state.outputData.y.length > 0) {
     const currentYear = state.outputData.y[state.outputData.y.length - 1];
     elements.summaryYear.textContent = currentYear.energyKwh.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   } else {
     elements.summaryYear.textContent = "--";
   }
-  
+
   // 3. Render Charts
   renderIntradayChart();
   renderHistoryChart();
-  
+
   // 4. Update Lifetime Stats & System Configuration
   if (state.statistic) {
     elements.statTotalEnergy.textContent = `${Math.round(state.statistic.totalEnergyKwh).toLocaleString("de-DE")} kWh`;
@@ -698,7 +698,7 @@ function renderDashboardUI() {
     elements.statMaxDailyDate.textContent = "Datum: --";
     elements.statOutputsCount.textContent = "-- Tage";
   }
-  
+
   if (state.systemInfo) {
     elements.sysName.textContent = state.systemInfo.name || "--";
     elements.sysSize.textContent = state.systemInfo.capacityWp ? `${state.systemInfo.capacityWp} Wp` : "--";
@@ -722,7 +722,7 @@ let historyChartInstance = null;
 function renderIntradayChart() {
   const canvas = elements.intradayChartCanvas;
   if (!canvas || !window.Chart) return;
-  
+
   const data = state.intradayHistory;
   if (!data || data.length === 0) {
     elements.intradayMaxVal.textContent = "-- W";

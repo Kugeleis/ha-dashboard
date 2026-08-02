@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="PVOutput Solar Dashboard - Live-Erzeugung & Statistiken">
   <title>Solaranlage Dashboard | PVOutput</title>
-  
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,18 +13,18 @@
 
   <!-- PicoCSS Stylesheet -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-  
+
   <!-- Chart.js Library -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="styles.css">
-  
+
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
 </head>
 <body>
-  
+
   <!-- Navigation Header -->
   <nav class="container-fluid nav-bar">
     <ul>
@@ -60,10 +60,10 @@
     <div id="status-banner" class="status-banner" style="display: none;">
       <span id="status-banner-text">Daten werden geladen...</span>
     </div>
-    
+
     <!-- Top Grid: Main Live Card & Key Summary Stat Tiles -->
     <div class="top-dashboard-grid">
-      
+
       <!-- Live Status & Gauge Card -->
       <article class="dash-card card-live">
         <header class="card-header">
@@ -188,7 +188,7 @@
           <span>Max: <strong id="intraday-max-val">0 W</strong></span>
         </div>
       </header>
-      
+
       <div class="chart-body">
         <div class="chart-container" id="intraday-chart-wrapper">
           <canvas id="intraday-chart"></canvas>
