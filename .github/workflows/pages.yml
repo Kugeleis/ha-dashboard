@@ -30,6 +30,26 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Generate secrets.json from GitHub Repository Secrets
+        env:
+          PVOUTPUT_SYSTEM_ID: ${{ secrets.PVOUTPUT_SYSTEM_ID }}
+          PVOUTPUT_API_KEY: ${{ secrets.PVOUTPUT_API_KEY }}
+          PVOUTPUT_PROXY_URL: ${{ secrets.PVOUTPUT_PROXY_URL }}
+        run: |
+          python3 -c "
+          import os, json
+          sys_id = os.environ.get('PVOUTPUT_SYSTEM_ID', '')
+          api_key = os.environ.get('PVOUTPUT_API_KEY', '')
+          proxy_url = os.environ.get('PVOUTPUT_PROXY_URL', '')
+          if sys_id or api_key or proxy_url:
+              data = {'systemId': sys_id, 'apiKey': api_key, 'proxyUrl': proxy_url}
+              with open('secrets.json', 'w') as f:
+                  json.dump(data, f, indent=2)
+              print('Generated secrets.json from GitHub Repository Secrets.')
+          else:
+              print('No GitHub Repository Secrets found. Skipping secrets.json generation.')
+          "
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
