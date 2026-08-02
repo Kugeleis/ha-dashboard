@@ -75,3 +75,59 @@ You can supply your PVOutput system credentials securely via GitHub Repository S
 
 > [!NOTE]
 > Because GitHub Pages hosts client-side static files, `secrets.json` will be fetched by the browser. Always use a **Read-Only API Key** (`pvoutputreadonly` or your personal read-only API key) when deploying to GitHub Pages.
+
+---
+
+## ⚡ CORS & Proxy Architecture on GitHub Pages
+
+Because **PVOutput.org** does not send `Access-Control-Allow-Origin` headers, browser applications hosted on external origins (such as `https://yourusername.github.io`) cannot fetch data directly without encountering browser CORS blocks.
+
+To guarantee maximum reliability on GitHub Pages, this dashboard uses a **Multi-Proxy Fallback Chain**:
+
+1. **Custom User Proxy** (if configured via settings, URL parameter, or `secrets.json`)
+2. **CodeTabs Proxy** (`https://api.codetabs.com/v1/proxy?quest=`)
+3. **CorsProxy.io** (`https://corsproxy.io/?`)
+4. **ThingProxy** (`https://thingproxy.freeboard.io/fetch/`)
+5. **AllOrigins** (`https://api.allorigins.win/raw?url=`)
+6. **AllOrigins JSON Wrapper** (`https://api.allorigins.win/get?url=`)
+7. **Direct URL** *(for non-browser environments)*
+
+### 🔒 Recommended: 1-Click Custom Cloudflare Worker Proxy
+
+If public CORS proxies experience temporary rate limits or outages, you can host your own **100% private, free CORS proxy** on Cloudflare Workers (100,000 requests/day free):
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create Application**.
+2. Name your worker (e.g. `pvoutput-cors-proxy`) and click **Deploy**.
+3. Click **Edit Code** and paste the following JavaScript:
+
+```javascript
+export default {
+  async fetch(request) {
+    const url = new URL(request.url).searchParams.get("url");
+    if (!url) {
+      return new Response("Missing target 'url' parameter", { status: 400 });
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 PVOutput-Dashboard" }
+      });
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set("Access-Control-Allow-Origin", "*");
+      newHeaders.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      return new Response(response.body, {
+        status: response.status,
+        headers: newHeaders
+      });
+    } catch (err) {
+      return new Response("Proxy error: " + err.message, { status: 502 });
+    }
+  }
+};
+```
+
+4. Save and deploy.
+5. In your Dashboard **⚙️ Einstellungen**, set the **CORS Proxy Server** to:
+   ```text
+   https://pvoutput-cors-proxy.YOUR_SUBDOMAIN.workers.dev/?url=
+   ```
