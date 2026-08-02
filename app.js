@@ -241,7 +241,15 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        ...(options.headers || {})
+      },
+      signal: controller.signal
+    });
     clearTimeout(timeoutId);
     return res;
   } catch (err) {
@@ -250,11 +258,24 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
   }
 }
 
-// Network Request with Multi-Proxy Fallback Chain & Short Timeout
+// Helper to validate clean PVOutput text response (rejecting 403 rate limits, 500 HTML errors, JSON error objects)
+function isValidPVOutputResponse(text) {
+  if (!text || typeof text !== "string") return false;
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed.includes("<html") || trimmed.includes("<body") || trimmed.includes("<head")) return false;
+  if (trimmed.startsWith("Err") || trimmed.startsWith("Forbidden") || trimmed.includes("Exceeded 60 requests") || trimmed.includes("error code:") || trimmed.includes("Server-side requests are not allowed")) {
+    return false;
+  }
+  return true;
+}
+
+// Network Request with Multi-Proxy Fallback Chain, Cache Busting & Short Timeout
 async function fetchPVOutput(endpoint, queryParams = {}) {
   const params = new URLSearchParams({
     key: state.apiKey,
     sid: state.systemId,
+    _t: Date.now().toString(), // Cache-buster timestamp to prevent proxy/browser stale caching
     ...queryParams
   });
 
@@ -270,35 +291,46 @@ async function fetchPVOutput(endpoint, queryParams = {}) {
     });
   }
 
-  // Candidate Proxies
-  proxyCandidates.push({ type: "raw", url: targetUrl });
+  // Candidate Proxies in order of reliability for browser / GitHub Pages origins
+  proxyCandidates.push({ type: "raw", url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}` });
   proxyCandidates.push({ type: "raw", url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` });
+  proxyCandidates.push({ type: "raw", url: `https://thingproxy.freeboard.io/fetch/${targetUrl}` });
   proxyCandidates.push({ type: "raw", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` });
   proxyCandidates.push({ type: "allorigins-json", url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}` });
+  proxyCandidates.push({ type: "raw", url: targetUrl });
 
   let lastError = null;
+  let isRateLimited = false;
+
   for (const proxy of proxyCandidates) {
     try {
-      const res = await fetchWithTimeout(proxy.url, { cache: "no-store" }, 2000);
+      const res = await fetchWithTimeout(proxy.url, { cache: "no-store" }, 2500);
       if (res.ok) {
         if (proxy.type === "allorigins-json") {
           const json = await res.json();
           if (json && json.contents) {
             const contents = json.contents.trim();
-            if (!contents.includes("<html") && !contents.startsWith("Err")) {
+            if (contents.includes("Exceeded 60 requests")) isRateLimited = true;
+            if (isValidPVOutputResponse(contents)) {
               return contents;
             }
           }
         } else {
           const text = await res.text();
-          if (text && !text.includes("<html") && !text.startsWith("Err") && text.trim().length > 0) {
+          if (text.includes("Exceeded 60 requests")) isRateLimited = true;
+          if (isValidPVOutputResponse(text)) {
             return text.trim();
           }
         }
       }
     } catch (err) {
+      console.warn(`Proxy Attempt (${proxy.url}) failed:`, err);
       lastError = err;
     }
+  }
+
+  if (isRateLimited) {
+    throw new Error("RATE_LIMIT_EXCEEDED");
   }
 
   throw lastError || new Error(`Konnte keine Verbindung zu ${endpoint} herstellen.`);
@@ -319,9 +351,10 @@ async function loadAllDashboardData(manual = false) {
   showStatusBanner("Lade Solardaten von PVOutput.org...", "info");
 
   let successCount = 0;
+  let rateLimitHit = false;
 
   try {
-    // 1. Fetch Intraday 5-min history & Live Status in 1 request
+    // 1. Fetch Intraday 5-min history & Live Status in 1 request (Always run on auto-refresh & manual)
     try {
       const historyIntradayRaw = await fetchPVOutput("getstatus.jsp", { h: 1, limit: 288 });
       if (historyIntradayRaw) {
@@ -342,27 +375,29 @@ async function loadAllDashboardData(manual = false) {
         successCount++;
       }
     } catch (e) {
+      if (e.message === "RATE_LIMIT_EXCEEDED") rateLimitHit = true;
       console.warn("intraday history fetch warning:", e);
     }
 
-    await delay(1500);
-
-    // 2. Fetch Output History (365 days)
-    try {
-      const outputRaw = await fetchPVOutput("getoutput.jsp", { limit: 365 });
-      if (outputRaw) {
-        state.rawDailyOutputs = parseOutputRows(outputRaw);
-        computeOutputAggregations(state.rawDailyOutputs);
-        successCount++;
+    // 2. Fetch Output History (365 days) - only on manual refresh or if output history is missing
+    if (state.rawDailyOutputs.length === 0 || manual) {
+      await delay(1500);
+      try {
+        const outputRaw = await fetchPVOutput("getoutput.jsp", { limit: 365 });
+        if (outputRaw) {
+          state.rawDailyOutputs = parseOutputRows(outputRaw);
+          computeOutputAggregations(state.rawDailyOutputs);
+          successCount++;
+        }
+      } catch (e) {
+        if (e.message === "RATE_LIMIT_EXCEEDED") rateLimitHit = true;
+        console.warn("getoutput.jsp fetch warning:", e);
       }
-    } catch (e) {
-      console.warn("getoutput.jsp fetch warning:", e);
     }
-
-    await delay(1500);
 
     // 3. Fetch Overall Statistic (only if missing or manual refresh)
     if (!state.statistic || manual) {
+      await delay(1500);
       try {
         const statRaw = await fetchPVOutput("getstatistic.jsp");
         if (statRaw) {
@@ -370,13 +405,14 @@ async function loadAllDashboardData(manual = false) {
           successCount++;
         }
       } catch (e) {
+        if (e.message === "RATE_LIMIT_EXCEEDED") rateLimitHit = true;
         console.warn("getstatistic.jsp fetch warning:", e);
       }
-      await delay(1500);
     }
 
     // 4. Fetch System Info (only if missing or manual refresh)
     if (!state.systemInfo || manual) {
+      await delay(1500);
       try {
         const sysRaw = await fetchPVOutput("getsystem.jsp");
         if (sysRaw) {
@@ -384,6 +420,7 @@ async function loadAllDashboardData(manual = false) {
           successCount++;
         }
       } catch (e) {
+        if (e.message === "RATE_LIMIT_EXCEEDED") rateLimitHit = true;
         console.warn("getsystem.jsp fetch warning:", e);
       }
     }
@@ -394,19 +431,22 @@ async function loadAllDashboardData(manual = false) {
     // Render UI Updates with actual loaded data only
     renderDashboardUI();
 
-    if (successCount > 0) {
+    if (rateLimitHit) {
+      updateBadge("connecting", "API-Limit erreicht");
+      showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Nächste automatische Aktualisierung in 5 Min.", "warning");
+    } else if (successCount > 0) {
       updateBadge("connected", "Verbunden");
       hideStatusBanner();
     } else {
       updateBadge("disconnected", "Nicht verbunden");
-      showStatusBanner("Keine Live-Daten geladen. Bitte System ID & API-Key in den Einstellungen prüfen.", "error");
+      showStatusBanner("Keine Daten geladen. Öffentliche CORS-Proxys blockiert? Bitte Einstellungen oder eigenen Proxy prüfen.", "error");
     }
 
   } catch (err) {
     console.error("PVOutput Fetch Error:", err);
     renderDashboardUI();
     updateBadge("disconnected", "Nicht verbunden");
-    showStatusBanner("Verbindungsfehler. Bitte System ID & API-Key in den Einstellungen prüfen.", "error");
+    showStatusBanner("CORS/Netzwerkfehler beim Datenabruf. Bitte eigenen Proxy in den Einstellungen konfigurieren.", "error");
   } finally {
     state.isFetching = false;
   }

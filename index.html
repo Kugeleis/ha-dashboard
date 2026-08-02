@@ -316,9 +316,17 @@
 
         <label for="input-proxy-url">
           CORS Proxy Server (Optional)
-          <input type="url" id="input-proxy-url" placeholder="Automatisch (Standard: allorigins/codetabs)">
-          <small>Falls Anfragen blockiert werden, können Sie hier eine eigene Proxy-Adresse angeben.</small>
+          <input type="url" id="input-proxy-url" placeholder="Automatisch (Standard: CodeTabs / CorsProxy / AllOrigins)">
+          <small>Automatische Ausweichkette für GitHub Pages aktiv. Falls Anfragen dennoch blockiert werden, tragen Sie hier eine eigene Proxy-URL ein (z.B. Cloudflare Worker).</small>
         </label>
+        <details>
+          <summary><small>💡 Tipp: Eigenen kostenlosen Cloudflare Worker Proxy nutzen</small></summary>
+          <small style="display:block; margin-top: 0.5rem; line-height: 1.4;">
+            Erstellen Sie in Cloudflare einen Worker mit folgendem Code:<br>
+            <code>export default { async fetch(req) { const u = new URL(req.url).searchParams.get('url'); if(!u) return new Response('Missing url', {status:400}); const r = await fetch(u); const h = new Headers(r.headers); h.set('Access-Control-Allow-Origin', '*'); return new Response(r.body, {status: r.status, headers: h}); } };</code><br>
+            Tragen Sie dann Ihre Worker-URL (z.B. <code>https://mein-proxy.workers.dev/?url=</code>) oben ein.
+          </small>
+        </details>
 
         <label for="input-refresh-interval">
           Automatische Aktualisierung
