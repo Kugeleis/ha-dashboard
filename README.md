@@ -74,7 +74,7 @@ You can supply your PVOutput system credentials securely via GitHub Repository S
 4. Push your changes to `main`. The deployment workflow will automatically generate `secrets.json` during build time and deploy it with your static site.
 
 > [!NOTE]
-> Because GitHub Pages hosts client-side static files, `secrets.json` will be fetched by the browser. Always use a **Read-Only API Key** (`pvoutputreadonly` or your personal read-only API key) when deploying to GitHub Pages.
+> Because GitHub Pages hosts client-side static files, `secrets.json` will be fetched by the browser. Always use a **Read-Only API Key** when deploying to GitHub Pages.
 
 ---
 
