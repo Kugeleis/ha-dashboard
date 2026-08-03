@@ -12,19 +12,114 @@ const DEFAULTS = {
 };
 
 // Weather Translations from English PVOutput weather strings to German
-const WEATHER_GERMAN = {
-  "fine": "Sonnig",
-  "partly cloudy": "Leicht bewölkt",
-  "mostly cloudy": "Stark bewölkt",
-  "cloudy": "Bewölkt",
-  "showers": "Regenschauer",
-  "rain": "Regnerisch",
-  "drizzle": "Sprühregen",
-  "snow": "Schnee",
-  "fog": "Nebel",
-  "windy": "Windig",
-  "unknown": "Unbekannt"
+// Weather strings will be fetched from language.json, fallback values provided here
+let texts = {
+  "weatherFine": "Sonnig",
+  "weatherPartlyCloudy": "Leicht bewölkt",
+  "weatherMostlyCloudy": "Stark bewölkt",
+  "weatherCloudy": "Bewölkt",
+  "weatherShowers": "Regenschauer",
+  "weatherRain": "Regnerisch",
+  "weatherDrizzle": "Sprühregen",
+  "weatherSnow": "Schnee",
+  "weatherFog": "Nebel",
+  "weatherWindy": "Windig",
+  "weatherUnknown": "Unbekannt",
+
+  "statusConfigMissing": "Konfiguration fehlt",
+  "statusWelcome": "Willkommen! Bitte geben Sie Ihre PVOutput System-ID & API-Key in den Einstellungen ein (oder per URL: ?sid=...&key=...).",
+  "statusConnecting": "Lade Daten...",
+  "statusUpdating": "Aktualisiere...",
+  "statusLoadingSolar": "Lade Solardaten von PVOutput.org...",
+  "statusApiLimit": "API-Limit erreicht",
+  "statusApiLimitError": "⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Es konnten keine Daten geladen werden. Bitte später erneut versuchen oder eigenen Proxy/API-Key prüfen.",
+  "statusApiLimitWarn": "⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Nächste automatische Aktualisierung in 5 Min.",
+  "statusConnected": "Verbunden",
+  "statusDisconnected": "Nicht verbunden",
+  "statusNoData": "Keine Daten geladen. Öffentliche CORS-Proxys blockiert? Bitte Einstellungen oder eigenen Proxy prüfen.",
+  "statusCorsError": "CORS/Netzwerkfehler beim Datenabruf. Bitte eigenen Proxy in den Einstellungen konfigurieren.",
+
+  "historyChartTitleD": "Solarertrags-Historie (Täglich - Letzte 30 Tage)",
+  "historyChartTitleW": "Solarertrags-Historie (Wöchentlich - Letzte 12 Wochen)",
+  "historyChartTitleM": "Solarertrags-Historie (Monatlich - Letzte 12 Monate)",
+  "historyChartTitleY": "Solarertrags-Historie (Jährlich - Alle Jahre)",
+  "historyChartEmpty": "Keine Daten verfügbar.",
+  "historyChartAvg": "Durchschnitt:",
+  "historyChartPerPeriod": "pro Periode",
+  "historyTotal": "Gesamtsumme:",
+
+  "chartPower": "Leistung (W)",
+  "chartYield": "Ertrag (kWh)",
+  "tooltipYield": "Ertrag:",
+  "tooltipPower": "Leistung:",
+
+  "monthJan": "Januar",
+  "monthFeb": "Februar",
+  "monthMar": "März",
+  "monthApr": "April",
+  "monthMay": "Mai",
+  "monthJun": "Juni",
+  "monthJul": "Juli",
+  "monthAug": "August",
+  "monthSep": "September",
+  "monthOct": "Oktober",
+  "monthNov": "November",
+  "monthDec": "Dezember",
+
+  "monthJanShort": "Jan",
+  "monthFebShort": "Feb",
+  "monthMarShort": "Mär",
+  "monthAprShort": "Apr",
+  "monthMayShort": "Mai",
+  "monthJunShort": "Jun",
+  "monthJulShort": "Jul",
+  "monthAugShort": "Aug",
+  "monthSepShort": "Sep",
+  "monthOctShort": "Okt",
+  "monthNovShort": "Nov",
+  "monthDecShort": "Dez",
+
+  "weekShort": "KW ",
+  "yearPrefix": "Jahr ",
+
+  "um": "um",
+  "tage": "Tage",
+
+  "liveTimeStand": "Stand:",
+  "liveTimeUhr": "Uhr",
+
+  "navSubtitle": "PVOutput.org • System ID: ",
+  "statMaxDate": "Datum:"
 };
+
+async function loadLanguageConfig() {
+  try {
+    const res = await fetch("language.json", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      texts = { ...texts, ...data };
+      applyTranslations();
+    }
+  } catch (err) {
+    console.warn("Could not load language.json, using default translations.");
+  }
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (texts[key]) {
+      el.textContent = texts[key];
+    }
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    if (texts[key]) {
+      el.title = texts[key];
+    }
+  });
+}
+
 
 // Runtime Credentials Resolver (Order: URL Parameters -> localStorage -> window.ENV -> Defaults)
 function resolveCredentials() {
@@ -147,6 +242,8 @@ async function loadSecretsJson() {
 
 // Initialize Application
 document.addEventListener("DOMContentLoaded", async () => {
+  await loadLanguageConfig();
+
   await loadSecretsJson();
   initUI();
   setupEventListeners();
@@ -156,15 +253,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function initUI() {
-  elements.navSystemId.textContent = state.systemId || "--";
+  elements.navSystemId.textContent = state.systemId ? state.systemId : "--";
   elements.inputSystemId.value = state.systemId;
   elements.inputApiKey.value = state.apiKey;
   elements.inputProxyUrl.value = state.proxyUrl;
   elements.inputRefreshInterval.value = state.refreshInterval.toString();
 
   if (!state.systemId || !state.apiKey) {
-    updateBadge("disconnected", "Konfiguration fehlt");
-    showStatusBanner("Willkommen! Bitte geben Sie Ihre PVOutput System-ID & API-Key in den Einstellungen ein (oder per URL: ?sid=...&key=...).", "info");
+    updateBadge("disconnected", texts.statusConfigMissing);
+    showStatusBanner(texts.statusWelcome, "info");
     setTimeout(() => {
       if (elements.settingsModal && !elements.settingsModal.open) {
         elements.settingsModal.showModal();
@@ -351,7 +448,7 @@ async function fetchPVOutput(endpoint, queryParams = {}) {
 // Staggered Sequential Fetcher with 1500ms delay to prevent PVOutput HTTP 403 rate-limiting
 async function loadAllDashboardData(manual = false) {
   if (!state.systemId || !state.apiKey) {
-    updateBadge("disconnected", "Konfiguration fehlt");
+    updateBadge("disconnected", texts.statusConfigMissing);
     showStatusBanner("Bitte PVOutput System-ID & API-Key in den Einstellungen eintragen.", "info");
     return;
   }
@@ -359,8 +456,8 @@ async function loadAllDashboardData(manual = false) {
   if (state.isFetching) return;
   state.isFetching = true;
 
-  updateBadge("connecting", manual ? "Lade Daten..." : "Aktualisiere...");
-  showStatusBanner("Lade Solardaten von PVOutput.org...", "info");
+  updateBadge("connecting", manual ? texts.statusConnecting : texts.statusUpdating);
+  showStatusBanner(texts.statusLoadingSolar, "info");
 
   let successCount = 0;
   let rateLimitHit = false;
@@ -444,29 +541,29 @@ async function loadAllDashboardData(manual = false) {
     renderDashboardUI();
 
     if (rateLimitHit) {
-      updateBadge("connecting", "API-Limit erreicht");
+      updateBadge("connecting", texts.statusApiLimit);
       if (successCount === 0) {
-        showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Es konnten keine Daten geladen werden. Bitte später erneut versuchen oder eigenen Proxy/API-Key prüfen.", "warning");
+        showStatusBanner(texts.statusApiLimitError, "warning");
       } else {
-        showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Nächste automatische Aktualisierung in 5 Min.", "warning");
+        showStatusBanner(texts.statusApiLimitWarn, "warning");
       }
     } else if (successCount > 0) {
-      updateBadge("connected", "Verbunden");
+      updateBadge("connected", texts.statusConnected);
       hideStatusBanner();
     } else {
-      updateBadge("disconnected", "Nicht verbunden");
-      showStatusBanner("Keine Daten geladen. Öffentliche CORS-Proxys blockiert? Bitte Einstellungen oder eigenen Proxy prüfen.", "error");
+      updateBadge("disconnected", texts.statusDisconnected);
+      showStatusBanner(texts.statusNoData, "error");
     }
 
   } catch (err) {
     console.error("PVOutput Fetch Error:", err);
     renderDashboardUI();
     if (err.message === "RATE_LIMIT_EXCEEDED") {
-      updateBadge("connecting", "API-Limit erreicht");
-      showStatusBanner("⚠️ PVOutput API-Limit erreicht (max. 60 Anfragen/Stunde). Es konnten keine Daten geladen werden. Bitte später erneut versuchen oder eigenen Proxy/API-Key prüfen.", "warning");
+      updateBadge("connecting", texts.statusApiLimit);
+      showStatusBanner(texts.statusApiLimitError, "warning");
     } else {
-      updateBadge("disconnected", "Nicht verbunden");
-      showStatusBanner("CORS/Netzwerkfehler beim Datenabruf. Bitte eigenen Proxy in den Einstellungen konfigurieren.", "error");
+      updateBadge("disconnected", texts.statusDisconnected);
+      showStatusBanner(texts.statusCorsError, "error");
     }
   } finally {
     state.isFetching = false;
@@ -680,13 +777,13 @@ function renderDashboardUI() {
     elements.livePowerVal.textContent = Math.round(state.liveStatus.powerW).toLocaleString("de-DE");
     elements.liveTodayKwh.textContent = formatEnergyDisplay(liveOrTodayWh);
     const dateFormatted = formatGermanDate(state.liveStatus.date);
-    elements.liveTime.textContent = dateFormatted !== "--" ? `Stand: ${dateFormatted}, ${state.liveStatus.time} Uhr` : `Stand: ${state.liveStatus.time} Uhr`;
+    elements.liveTime.textContent = dateFormatted !== "--" ? `${texts.liveTimeStand} ${dateFormatted}, ${state.liveStatus.time} ${texts.liveTimeUhr}` : `${texts.liveTimeStand} ${state.liveStatus.time} ${texts.liveTimeUhr}`;
     elements.liveEfficiency.textContent = state.liveStatus.efficiency > 0 ? `${state.liveStatus.efficiency.toFixed(2)} kWh/kW` : "-- kWh/kW";
     elements.liveTemp.textContent = state.liveStatus.tempC !== null ? `${state.liveStatus.tempC.toFixed(1)} °C` : "-- °C";
   } else {
     elements.livePowerVal.textContent = "--";
     elements.liveTodayKwh.textContent = "--";
-    elements.liveTime.textContent = "Stand: --:-- Uhr";
+    elements.liveTime.textContent = `${texts.liveTimeStand} --:-- ${texts.liveTimeUhr}`;
     elements.liveEfficiency.textContent = "-- kWh/kW";
     elements.liveTemp.textContent = "-- °C";
   }
@@ -694,13 +791,13 @@ function renderDashboardUI() {
   // Today's Peak Power & Weather
   if (todayOutput) {
     elements.livePeakPower.textContent = todayOutput.peakPowerW ? `${todayOutput.peakPowerW} W` : "-- W";
-    elements.livePeakTime.textContent = todayOutput.peakTime ? `um ${todayOutput.peakTime} Uhr` : "--:-- Uhr";
+    elements.livePeakTime.textContent = todayOutput.peakTime ? `${texts.um} ${todayOutput.peakTime} ${texts.liveTimeUhr}` : `--:-- ${texts.liveTimeUhr}`;
 
     const condLower = (todayOutput.condition || "").toLowerCase();
-    elements.liveCondition.textContent = WEATHER_GERMAN[condLower] || todayOutput.condition || "--";
+    elements.liveCondition.textContent = texts["weather" + condLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")] || todayOutput.condition || "--";
   } else {
     elements.livePeakPower.textContent = "-- W";
-    elements.livePeakTime.textContent = "--:-- Uhr";
+    elements.livePeakTime.textContent = `--:-- ${texts.liveTimeUhr}`;
     elements.liveCondition.textContent = "--";
   }
 
@@ -750,14 +847,14 @@ function renderDashboardUI() {
     elements.statTotalEnergy.textContent = `${Math.round(state.statistic.totalEnergyKwh).toLocaleString("de-DE")} kWh`;
     elements.statAvgDaily.textContent = `${state.statistic.avgDailyKwh.toFixed(2).replace(".", ",")} kWh/Tag`;
     elements.statMaxDaily.textContent = `${state.statistic.maxDailyKwh.toFixed(2).replace(".", ",")} kWh`;
-    elements.statMaxDailyDate.textContent = `Datum: ${formatGermanDate(state.statistic.maxDailyDate)}`;
-    elements.statOutputsCount.textContent = `${state.statistic.outputsCount.toLocaleString("de-DE")} Tage`;
+    elements.statMaxDailyDate.textContent = `${texts.statMaxDate} ${formatGermanDate(state.statistic.maxDailyDate)}`;
+    elements.statOutputsCount.textContent = `${state.statistic.outputsCount.toLocaleString("de-DE")} ${texts.tage}`;
   } else {
     elements.statTotalEnergy.textContent = "-- kWh";
     elements.statAvgDaily.textContent = "-- kWh/Tag";
     elements.statMaxDaily.textContent = "-- kWh";
-    elements.statMaxDailyDate.textContent = "Datum: --";
-    elements.statOutputsCount.textContent = "-- Tage";
+    elements.statMaxDailyDate.textContent = `${texts.statMaxDate} --`;
+    elements.statOutputsCount.textContent = `-- ${texts.tage}`;
   }
 
   if (state.systemInfo) {
@@ -817,7 +914,7 @@ function renderIntradayChart() {
     data: {
       labels: labels,
       datasets: [{
-        label: "Leistung (W)",
+        label: texts.chartPower,
         data: values,
         borderColor: "#f59e0b",
         borderWidth: 2.5,
@@ -842,7 +939,7 @@ function renderIntradayChart() {
           titleColor: "#fbbf24",
           bodyColor: "#f8fafc",
           callbacks: {
-            label: (ctx) => `Leistung: ${Math.round(ctx.parsed.y)} W`
+            label: (ctx) => `${texts.tooltipPower} ${Math.round(ctx.parsed.y)} W`
           }
         }
       },
@@ -876,16 +973,16 @@ function renderHistoryChart() {
   const list = state.outputData[gran] || [];
 
   const titles = {
-    d: "Solarertrags-Historie (Täglich - Letzte 30 Tage)",
-    w: "Solarertrags-Historie (Wöchentlich - Letzte 12 Wochen)",
-    m: "Solarertrags-Historie (Monatlich - Letzte 12 Monate)",
-    y: "Solarertrags-Historie (Jährlich - Alle Jahre)"
+    d: texts.historyChartTitleD,
+    w: texts.historyChartTitleW,
+    m: texts.historyChartTitleM,
+    y: texts.historyChartTitleY
   };
   elements.historyChartTitle.textContent = titles[gran] || "Solarertrags-Historie";
 
   if (!list || list.length === 0) {
-    elements.historySummaryText.textContent = "Keine Daten verfügbar.";
-    elements.historyTotalText.textContent = "Gesamtsumme: -- kWh";
+    elements.historySummaryText.textContent = texts.historyChartEmpty;
+    elements.historyTotalText.textContent = `${texts.historyTotal} -- kWh`;
     if (historyChartInstance) {
       historyChartInstance.destroy();
       historyChartInstance = null;
@@ -895,8 +992,8 @@ function renderHistoryChart() {
 
   const totalKwh = list.reduce((acc, curr) => acc + curr.energyKwh, 0);
   const avgKwh = totalKwh / list.length;
-  elements.historySummaryText.textContent = `Durchschnitt: ${avgKwh.toFixed(1).replace(".", ",")} kWh pro Periode`;
-  elements.historyTotalText.textContent = `Gesamtsumme: ${Math.round(totalKwh).toLocaleString("de-DE")} kWh`;
+  elements.historySummaryText.textContent = `${texts.historyChartAvg} ${avgKwh.toFixed(1).replace(".", ",")} kWh ${texts.historyChartPerPeriod}`;
+  elements.historyTotalText.textContent = `${texts.historyTotal} ${Math.round(totalKwh).toLocaleString("de-DE")} kWh`;
 
   const labels = list.map(item => formatGranularDateLabel(item.dateStr, gran, item.weekKey, item.monthKey, item.yearKey));
   const values = list.map(item => Number(item.energyKwh.toFixed(2)));
@@ -918,7 +1015,7 @@ function renderHistoryChart() {
     data: {
       labels: labels,
       datasets: [{
-        label: "Ertrag (kWh)",
+        label: texts.chartYield,
         data: values,
         backgroundColor: gradient,
         borderRadius: 5,
@@ -937,7 +1034,7 @@ function renderHistoryChart() {
           titleColor: "#fbbf24",
           bodyColor: "#f8fafc",
           callbacks: {
-            label: (ctx) => `Ertrag: ${ctx.parsed.y.toFixed(2).replace(".", ",")} kWh`
+            label: (ctx) => `${texts.tooltipYield} ${ctx.parsed.y.toFixed(2).replace(".", ",")} kWh`
           }
         }
       },
@@ -997,7 +1094,7 @@ function formatGranularDateLabel(str, gran, weekKey, monthKey, yearKey) {
     if (!str || str.length < 8) return str;
     return `${str.substring(6, 8)}.${str.substring(4, 6)}.`;
   }
-  if (gran === "w") return weekKey ? weekKey.replace(/^.*-W/, "KW ") : `KW ${getWeekNumber(str)}`;
+  if (gran === "w") return weekKey ? weekKey.replace(/^.*-W/, texts.weekShort) : `${texts.weekShort}${getWeekNumber(str)}`;
   if (gran === "m") {
     const mm = monthKey ? monthKey.substring(4, 6) : (str ? str.substring(4, 6) : "");
     return getMonthNameShort(mm);
@@ -1009,7 +1106,7 @@ function formatGranularDateLabel(str, gran, weekKey, monthKey, yearKey) {
 function formatGermanDateLong(str, gran, weekKey, monthKey, yearKey) {
   if (gran === "d") return formatGermanDate(str);
   if (gran === "w") {
-    const kw = weekKey ? weekKey.replace(/^.*-W/, "KW ") : `KW ${getWeekNumber(str)}`;
+    const kw = weekKey ? weekKey.replace(/^.*-W/, texts.weekShort) : `${texts.weekShort}${getWeekNumber(str)}`;
     return `${kw} (${formatGermanDate(str)})`;
   }
   if (gran === "m") {
@@ -1017,7 +1114,7 @@ function formatGermanDateLong(str, gran, weekKey, monthKey, yearKey) {
     const yyyy = monthKey ? monthKey.substring(0, 4) : (str ? str.substring(0, 4) : "");
     return `${getMonthNameLong(mm)} ${yyyy}`;
   }
-  if (gran === "y") return `Jahr ${yearKey || (str ? str.substring(0, 4) : "")}`;
+  if (gran === "y") return `${texts.yearPrefix}${yearKey || (str ? str.substring(0, 4) : "")}`;
   return str;
 }
 
@@ -1039,11 +1136,11 @@ function getWeekNumber(str) {
 }
 
 function getMonthNameShort(mm) {
-  const months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+  const months = [texts.monthJanShort, texts.monthFebShort, texts.monthMarShort, texts.monthAprShort, texts.monthMayShort, texts.monthJunShort, texts.monthJulShort, texts.monthAugShort, texts.monthSepShort, texts.monthOctShort, texts.monthNovShort, texts.monthDecShort];
   return months[parseInt(mm, 10) - 1] || mm;
 }
 
 function getMonthNameLong(mm) {
-  const months = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const months = [texts.monthJan, texts.monthFeb, texts.monthMar, texts.monthApr, texts.monthMay, texts.monthJun, texts.monthJul, texts.monthAug, texts.monthSep, texts.monthOct, texts.monthNov, texts.monthDec];
   return months[parseInt(mm, 10) - 1] || mm;
 }

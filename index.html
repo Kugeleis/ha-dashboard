@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="PVOutput Solar Dashboard - Live-Erzeugung & Statistiken">
-  <title>Solaranlage Dashboard | PVOutput</title>
+  <title data-i18n="title">Solaranlage Dashboard | PVOutput</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,23 +31,29 @@
       <li class="nav-brand">
         <span class="sun-logo">☀️</span>
         <div>
-          <h1 class="nav-title" id="system-title">Solaranlage Dashboard</h1>
-          <small class="nav-subtitle" id="system-subtitle">PVOutput.org • System ID: <span id="nav-system-id">--</span></small>
+          <h1 class="nav-title" id="system-title" data-i18n="navTitle">Solaranlage Dashboard</h1>
+          <small class="nav-subtitle" id="system-subtitle"><span data-i18n="navSubtitle">PVOutput.org • System ID: </span><span id="nav-system-id">--</span></small>
         </div>
       </li>
     </ul>
     <ul>
-      <li><span id="conn-pill" class="badge badge-connecting">Initialisiere...</span></li>
+
       <li>
-        <button id="refresh-btn" class="outline contrast nav-btn" title="Daten jetzt aktualisieren">
+        <a href="https://github.com/Kugeleis/pv-dashboard" target="_blank" class="outline contrast nav-btn" title="GitHub Repository">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        </a>
+      </li>
+      <li><span id="conn-pill" class="badge badge-connecting" data-i18n="connPillInit">Initialisiere...</span></li>
+      <li>
+        <button id="refresh-btn" class="outline contrast nav-btn" title="Daten jetzt aktualisieren" data-i18n-title="refreshBtn">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-          <span>Aktualisieren</span>
+          <span data-i18n="refreshBtn">Aktualisieren</span>
         </button>
       </li>
       <li>
-        <button id="settings-btn" class="outline secondary nav-btn" title="Einstellungen öffnen">
+        <button id="settings-btn" class="outline secondary nav-btn" title="Einstellungen öffnen" data-i18n-title="settingsBtn">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span>Einstellungen</span>
+          <span data-i18n="settingsBtn">Einstellungen</span>
         </button>
       </li>
     </ul>
@@ -58,7 +64,7 @@
 
     <!-- Status Banner / Toast -->
     <div id="status-banner" class="status-banner" style="display: none;">
-      <span id="status-banner-text">Daten werden geladen...</span>
+      <span id="status-banner-text" data-i18n="statusLoading">Daten werden geladen...</span>
     </div>
 
     <!-- Top Grid: Main Live Card & Key Summary Stat Tiles -->
@@ -69,7 +75,7 @@
         <header class="card-header">
           <div class="header-title">
             <span class="header-icon">⚡</span>
-            <h3>Aktuelle Solarleistung</h3>
+            <h3 data-i18n="livePowerTitle">Aktuelle Solarleistung</h3>
           </div>
           <small class="live-timestamp" id="live-time">Stand: --:-- Uhr</small>
         </header>
@@ -79,10 +85,10 @@
           <div class="power-hero">
             <div class="power-main-val">
               <span class="hero-number" id="live-power-val">0</span>
-              <span class="hero-unit">Watt</span>
+              <span class="hero-unit" data-i18n="heroUnit">Watt</span>
             </div>
             <div class="power-sub-info">
-              <span class="sub-label">Tagesertrag bisher:</span>
+              <span class="sub-label" data-i18n="todayYieldLabel">Tagesertrag bisher:</span>
               <strong class="sub-val" id="live-today-kwh">0,00 kWh</strong>
             </div>
           </div>
@@ -92,7 +98,7 @@
             <div class="quick-metric-item">
               <span class="metric-icon">📈</span>
               <div class="metric-text">
-                <span class="metric-label">Spitze</span>
+                <span class="metric-label" data-i18n="peakLabel">Spitze</span>
                 <span class="metric-value" id="live-peak-power">-- W</span>
                 <small class="metric-sub" id="live-peak-time">--:-- Uhr</small>
               </div>
@@ -101,27 +107,27 @@
             <div class="quick-metric-item">
               <span class="metric-icon">⚡</span>
               <div class="metric-text">
-                <span class="metric-label">Wirkungsgrad</span>
+                <span class="metric-label" data-i18n="efficiencyLabel">Wirkungsgrad</span>
                 <span class="metric-value" id="live-efficiency">-- kWh/kW</span>
-                <small class="metric-sub">Spezifisch</small>
+                <small class="metric-sub" data-i18n="efficiencySub">Spezifisch</small>
               </div>
             </div>
 
             <div class="quick-metric-item">
               <span class="metric-icon">🌡️</span>
               <div class="metric-text">
-                <span class="metric-label">Temperatur</span>
+                <span class="metric-label" data-i18n="tempLabel">Temperatur</span>
                 <span class="metric-value" id="live-temp">-- °C</span>
-                <small class="metric-sub">Modul Temp.</small>
+                <small class="metric-sub" data-i18n="tempSub">Modul Temp.</small>
               </div>
             </div>
 
             <div class="quick-metric-item">
               <span class="metric-icon">🔆</span>
               <div class="metric-text">
-                <span class="metric-label">Wetter</span>
+                <span class="metric-label" data-i18n="weatherLabel">Wetter</span>
                 <span class="metric-value" id="live-condition">--</span>
-                <small class="metric-sub">PVOutput</small>
+                <small class="metric-sub" data-i18n="weatherSub">PVOutput</small>
               </div>
             </div>
           </div>
@@ -133,7 +139,7 @@
         <article class="dash-card yield-tile">
           <div class="tile-icon icon-day">📅</div>
           <div class="tile-content">
-            <span class="tile-label">Heute (Tagesertrag)</span>
+            <span class="tile-label" data-i18n="yieldToday">Heute (Tagesertrag)</span>
             <div class="tile-value-group">
               <span class="tile-value" id="summary-yield-day">--</span>
               <span class="tile-unit" id="summary-yield-day-unit">kWh</span>
@@ -144,7 +150,7 @@
         <article class="dash-card yield-tile">
           <div class="tile-icon icon-week">📆</div>
           <div class="tile-content">
-            <span class="tile-label">Diese Woche</span>
+            <span class="tile-label" data-i18n="yieldWeek">Diese Woche</span>
             <div class="tile-value-group">
               <span class="tile-value" id="summary-yield-week">--</span>
               <span class="tile-unit">kWh</span>
@@ -155,7 +161,7 @@
         <article class="dash-card yield-tile">
           <div class="tile-icon icon-month">🗓️</div>
           <div class="tile-content">
-            <span class="tile-label">Diesen Monat</span>
+            <span class="tile-label" data-i18n="yieldMonth">Diesen Monat</span>
             <div class="tile-value-group">
               <span class="tile-value" id="summary-yield-month">--</span>
               <span class="tile-unit">kWh</span>
@@ -166,7 +172,7 @@
         <article class="dash-card yield-tile">
           <div class="tile-icon icon-year">🏆</div>
           <div class="tile-content">
-            <span class="tile-label">Dieses Jahr</span>
+            <span class="tile-label" data-i18n="yieldYear">Dieses Jahr</span>
             <div class="tile-value-group">
               <span class="tile-value" id="summary-yield-year">--</span>
               <span class="tile-unit">kWh</span>
@@ -182,7 +188,7 @@
       <header class="card-header flex-between">
         <div class="header-title">
           <span class="header-icon">📊</span>
-          <h3>Heutiger Erzeugungsverlauf (5-Minuten-Takt)</h3>
+          <h3 data-i18n="intradayChartTitle">Heutiger Erzeugungsverlauf (5-Minuten-Takt)</h3>
         </div>
         <div class="chart-stats-pill">
           <span>Max: <strong id="intraday-max-val">0 W</strong></span>
@@ -206,16 +212,16 @@
 
         <!-- Granularity Selector Tabs -->
         <div class="tab-group" role="tablist">
-          <button class="tab-btn active" data-granularity="d" role="tab" aria-selected="true">Täglich</button>
-          <button class="tab-btn" data-granularity="w" role="tab" aria-selected="false">Wöchentlich</button>
-          <button class="tab-btn" data-granularity="m" role="tab" aria-selected="false">Monatlich</button>
-          <button class="tab-btn" data-granularity="y" role="tab" aria-selected="false">Jährlich</button>
+          <button class="tab-btn active" data-granularity="d" role="tab" aria-selected="true" data-i18n="tabDaily">Täglich</button>
+          <button class="tab-btn" data-granularity="w" role="tab" aria-selected="false" data-i18n="tabWeekly">Wöchentlich</button>
+          <button class="tab-btn" data-granularity="m" role="tab" aria-selected="false" data-i18n="tabMonthly">Monatlich</button>
+          <button class="tab-btn" data-granularity="y" role="tab" aria-selected="false" data-i18n="tabYearly">Jährlich</button>
         </div>
       </header>
 
       <div class="chart-body">
         <div class="history-metrics-summary flex-between">
-          <span class="summary-text" id="history-summary-text">Lade historische Daten...</span>
+          <span class="summary-text" id="history-summary-text" data-i18n="historySummaryLoading">Lade historische Daten...</span>
           <span class="summary-highlight" id="history-total-text">Gesamtsumme: -- kWh</span>
         </div>
 
@@ -232,29 +238,29 @@
         <header class="card-header">
           <div class="header-title">
             <span class="header-icon">⭐</span>
-            <h3>Gesamtstatistik & Rekorde</h3>
+            <h3 data-i18n="statsTitle">Gesamtstatistik & Rekorde</h3>
           </div>
         </header>
 
         <div class="info-grid">
           <div class="info-item">
-            <span class="info-label">Gesamtertrag</span>
+            <span class="info-label" data-i18n="statTotal">Gesamtertrag</span>
             <span class="info-value highlight-gold" id="stat-total-energy">-- kWh</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Ø pro Tag</span>
+            <span class="info-label" data-i18n="statAvg">Ø pro Tag</span>
             <span class="info-value" id="stat-avg-daily">-- kWh/Tag</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Höchster Tagesertrag</span>
+            <span class="info-label" data-i18n="statMax">Höchster Tagesertrag</span>
             <span class="info-value highlight-green" id="stat-max-daily">-- kWh</span>
             <small class="info-sub" id="stat-max-daily-date">Datum: --</small>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Erfassungstage</span>
+            <span class="info-label" data-i18n="statDays">Erfassungstage</span>
             <span class="info-value" id="stat-outputs-count">-- Tage</span>
           </div>
         </div>
@@ -265,28 +271,28 @@
         <header class="card-header">
           <div class="header-title">
             <span class="header-icon">🔧</span>
-            <h3>Anlagenkonfiguration</h3>
+            <h3 data-i18n="sysTitle">Anlagenkonfiguration</h3>
           </div>
         </header>
 
         <div class="info-grid">
           <div class="info-item">
-            <span class="info-label">Anlagenname</span>
+            <span class="info-label" data-i18n="sysName">Anlagenname</span>
             <span class="info-value" id="sys-name">Guerilla</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Leistung</span>
+            <span class="info-label" data-i18n="sysSize">Leistung</span>
             <span class="info-value" id="sys-size">570 Wp</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Solarmodule</span>
+            <span class="info-label" data-i18n="sysPanels">Solarmodule</span>
             <span class="info-value" id="sys-panels">2x Trina (285W)</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Wechselrichter</span>
+            <span class="info-label" data-i18n="sysInverter">Wechselrichter</span>
             <span class="info-value" id="sys-inverter">1x APSystems (600W)</span>
           </div>
         </div>
@@ -300,47 +306,47 @@
     <article class="modal-card">
       <header>
         <button aria-label="Schließen" class="close" id="modal-close-btn"></button>
-        <h3>⚙️ Dashboard Einstellungen</h3>
+        <h3 data-i18n="settingsTitle">⚙️ Dashboard Einstellungen</h3>
       </header>
 
       <form id="settings-form">
         <label for="input-system-id">
-          System ID (PVOutput.org)
+          <span data-i18n="settingsSysId">System ID (PVOutput.org)</span>
           <input type="text" id="input-system-id" placeholder="z.B. 34161" required>
         </label>
 
         <label for="input-api-key">
-          Schreibgeschützter API-Schlüssel (Read-Only API Key)
+          <span data-i18n="settingsApiKey">Schreibgeschützter API-Schlüssel (Read-Only API Key)</span>
           <input type="password" id="input-api-key" placeholder="z.B. pvoutputreadonly" required>
         </label>
 
         <label for="input-proxy-url">
-          CORS Proxy Server (Optional)
+          <span data-i18n="settingsProxy">CORS Proxy Server (Optional)</span>
           <input type="url" id="input-proxy-url" placeholder="Automatisch (Standard: CodeTabs / CorsProxy / AllOrigins)">
-          <small>Automatische Ausweichkette für GitHub Pages aktiv. Falls Anfragen dennoch blockiert werden, tragen Sie hier eine eigene Proxy-URL ein (z.B. Cloudflare Worker).</small>
+          <small data-i18n="settingsProxySub">Automatische Ausweichkette für GitHub Pages aktiv. Falls Anfragen dennoch blockiert werden, tragen Sie hier eine eigene Proxy-URL ein (z.B. Cloudflare Worker).</small>
         </label>
         <details>
-          <summary><small>💡 Tipp: Eigenen kostenlosen Cloudflare Worker Proxy nutzen</small></summary>
+          <summary><small data-i18n="settingsProxyTip">💡 Tipp: Eigenen kostenlosen Cloudflare Worker Proxy nutzen</small></summary>
           <small style="display:block; margin-top: 0.5rem; line-height: 1.4;">
-            Erstellen Sie in Cloudflare einen Worker mit folgendem Code:<br>
+            <span data-i18n="settingsProxyCode1">Erstellen Sie in Cloudflare einen Worker mit folgendem Code:</span><br>
             <code>export default { async fetch(req) { const u = new URL(req.url).searchParams.get('url'); if(!u) return new Response('Missing url', {status:400}); const r = await fetch(u); const h = new Headers(r.headers); h.set('Access-Control-Allow-Origin', '*'); return new Response(r.body, {status: r.status, headers: h}); } };</code><br>
-            Tragen Sie dann Ihre Worker-URL (z.B. <code>https://mein-proxy.workers.dev/?url=</code>) oben ein.
+            <span data-i18n="settingsProxyCode2">Tragen Sie dann Ihre Worker-URL (z.B. </span><code>https://mein-proxy.workers.dev/?url=</code><span data-i18n="settingsProxyCode3">) oben ein.</span>
           </small>
         </details>
 
         <label for="input-refresh-interval">
-          Automatische Aktualisierung
+          <span data-i18n="settingsInterval">Automatische Aktualisierung</span>
           <select id="input-refresh-interval">
-            <option value="180000">Alle 3 Minuten</option>
-            <option value="300000" selected>Alle 5 Minuten (Empfohlen)</option>
-            <option value="600000">Alle 10 Minuten</option>
-            <option value="0">Deaktiviert (Nur manuell)</option>
+            <option value="180000" data-i18n="interval3m">Alle 3 Minuten</option>
+            <option value="300000" selected data-i18n="interval5m">Alle 5 Minuten (Empfohlen)</option>
+            <option value="600000" data-i18n="interval10m">Alle 10 Minuten</option>
+            <option value="0" data-i18n="interval0m">Deaktiviert (Nur manuell)</option>
           </select>
         </label>
 
         <footer>
-          <button type="button" class="secondary" id="modal-cancel-btn">Abbrechen</button>
-          <button type="submit" class="contrast">Speichern & Laden</button>
+          <button type="button" class="secondary" id="modal-cancel-btn" data-i18n="cancelBtn">Abbrechen</button>
+          <button type="submit" class="contrast" data-i18n="saveBtn">Speichern & Laden</button>
         </footer>
       </form>
     </article>
