@@ -40,6 +40,38 @@ nav ul li { padding: 0; }
 .nav-title { font-size: 1.25rem; margin: 0; color: var(--solar-gold); }
 .nav-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; font-size: 0.8rem; margin: 0; }
 
+@media (max-width: 767px) {
+  nav.nav-bar {
+    padding: 0.5rem 0.5rem;
+  }
+  .nav-title {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .nav-subtitle {
+    font-size: 0.6rem;
+    white-space: nowrap;
+  }
+  .sun-logo {
+    font-size: 1.2rem;
+  }
+  .nav-brand {
+    gap: 0.3rem;
+  }
+  .nav-btn span {
+    display: none;
+  }
+  .nav-btn {
+    padding: 0.35rem;
+  }
+  nav ul {
+    gap: 0.3rem;
+  }
+  #conn-pill {
+    display: none;
+  }
+}
+
 /* Status Badges & Banner */
 .badge { display: inline-block; padding: 0.2rem 0.6rem; font-size: 0.72rem; font-weight: 700; border-radius: 999px; text-transform: uppercase; white-space: nowrap; }
 .badge-connected { background: rgba(16, 185, 129, 0.15); color: var(--emerald-green); border: 1px solid rgba(16, 185, 129, 0.3); }
