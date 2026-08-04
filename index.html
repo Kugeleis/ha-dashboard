@@ -310,6 +310,13 @@
       </header>
 
       <form id="settings-form">
+        <label for="input-language">
+          <span data-i18n="settingsLanguage">Sprache</span>
+          <select id="input-language">
+            <!-- Populated dynamically via JS -->
+          </select>
+        </label>
+
         <label for="input-system-id">
           <span data-i18n="settingsSysId">System ID (PVOutput.org)</span>
           <input type="text" id="input-system-id" placeholder="z.B. 34161" required>
@@ -344,7 +351,7 @@
           </select>
         </label>
 
-        <footer>
+        <footer class="grid">
           <button type="button" class="secondary" id="modal-cancel-btn" data-i18n="cancelBtn">Abbrechen</button>
           <button type="submit" class="contrast" data-i18n="saveBtn">Speichern & Laden</button>
         </footer>
