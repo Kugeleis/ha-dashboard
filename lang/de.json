@@ -43,6 +43,7 @@
   "sysPanels": "Solarmodule",
   "sysInverter": "Wechselrichter",
   "settingsTitle": "⚙️ Dashboard Einstellungen",
+  "settingsLanguage": "Sprache",
   "settingsSysId": "System ID (PVOutput.org)",
   "settingsApiKey": "Schreibgeschützter API-Schlüssel (Read-Only API Key)",
   "settingsProxy": "CORS Proxy Server (Optional)",
@@ -58,7 +59,6 @@
   "interval0m": "Deaktiviert (Nur manuell)",
   "cancelBtn": "Abbrechen",
   "saveBtn": "Speichern & Laden",
-
   "weatherFine": "Sonnig",
   "weatherPartlyCloudy": "Leicht bewölkt",
   "weatherMostlyCloudy": "Stark bewölkt",
@@ -70,7 +70,6 @@
   "weatherFog": "Nebel",
   "weatherWindy": "Windig",
   "weatherUnknown": "Unbekannt",
-
   "statusConfigMissing": "Konfiguration fehlt",
   "statusWelcome": "Willkommen! Bitte geben Sie Ihre PVOutput System-ID & API-Key in den Einstellungen ein (oder per URL: ?sid=...&key=...).",
   "statusConnecting": "Lade Daten...",
@@ -83,7 +82,6 @@
   "statusDisconnected": "Nicht verbunden",
   "statusNoData": "Keine Daten geladen. Öffentliche CORS-Proxys blockiert? Bitte Einstellungen oder eigenen Proxy prüfen.",
   "statusCorsError": "CORS/Netzwerkfehler beim Datenabruf. Bitte eigenen Proxy in den Einstellungen konfigurieren.",
-
   "historyChartTitleD": "Solarertrags-Historie (Täglich - Letzte 30 Tage)",
   "historyChartTitleW": "Solarertrags-Historie (Wöchentlich - Letzte 12 Wochen)",
   "historyChartTitleM": "Solarertrags-Historie (Monatlich - Letzte 12 Monate)",
@@ -91,12 +89,10 @@
   "historyChartEmpty": "Keine Daten verfügbar.",
   "historyChartAvg": "Durchschnitt:",
   "historyChartPerPeriod": "pro Periode",
-
   "chartPower": "Leistung (W)",
   "chartYield": "Ertrag (kWh)",
   "tooltipYield": "Ertrag:",
   "tooltipPower": "Leistung:",
-
   "monthJan": "Januar",
   "monthFeb": "Februar",
   "monthMar": "März",
@@ -109,7 +105,6 @@
   "monthOct": "Oktober",
   "monthNov": "November",
   "monthDec": "Dezember",
-
   "monthJanShort": "Jan",
   "monthFebShort": "Feb",
   "monthMarShort": "Mär",
@@ -122,10 +117,8 @@
   "monthOctShort": "Okt",
   "monthNovShort": "Nov",
   "monthDecShort": "Dez",
-
   "weekShort": "KW ",
   "yearPrefix": "Jahr ",
-
   "um": "um",
   "tage": "Tage"
 }

@@ -89,19 +89,49 @@ let texts = {
   "liveTimeUhr": "Uhr",
 
   "navSubtitle": "PVOutput.org • System ID: ",
-  "statMaxDate": "Datum:"
+  "statMaxDate": "Datum:",
+  "settingsLanguage": "Sprache"
 };
+
+let availableLanguages = {};
 
 async function loadLanguageConfig() {
   try {
-    const res = await fetch("language.json", { cache: "no-store" });
+    // 1. Fetch available languages registry
+    const regRes = await fetch("languages.json", { cache: "no-store" });
+    if (regRes.ok) {
+      availableLanguages = await regRes.json();
+      populateLanguageDropdown();
+    }
+
+    // 2. Fetch selected language strings
+    const currentLang = localStorage.getItem("pv_language") || "de";
+    const res = await fetch(`lang/${currentLang}.json`, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       texts = { ...texts, ...data };
       applyTranslations();
     }
   } catch (err) {
-    console.warn("Could not load language.json, using default translations.");
+    console.warn("Could not load language configuration, using default translations.", err);
+  }
+}
+
+function populateLanguageDropdown() {
+  const select = document.getElementById("input-language");
+  if (!select) return;
+
+  select.innerHTML = "";
+  const currentLang = localStorage.getItem("pv_language") || "de";
+
+  for (const [code, name] of Object.entries(availableLanguages)) {
+    const option = document.createElement("option");
+    option.value = code;
+    option.textContent = name;
+    if (code === currentLang) {
+      option.selected = true;
+    }
+    select.appendChild(option);
   }
 }
 
@@ -282,8 +312,18 @@ function setupEventListeners() {
   elements.modalCloseBtn.addEventListener("click", () => elements.settingsModal.close());
   elements.modalCancelBtn.addEventListener("click", () => elements.settingsModal.close());
 
-  elements.settingsForm.addEventListener("submit", (e) => {
+  elements.settingsForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const langSelect = document.getElementById("input-language");
+    if (langSelect) {
+      const newLang = langSelect.value;
+      const oldLang = localStorage.getItem("pv_language") || "de";
+      if (newLang !== oldLang) {
+        localStorage.setItem("pv_language", newLang);
+        await loadLanguageConfig();
+      }
+    }
+
     state.systemId = elements.inputSystemId.value.trim();
     state.apiKey = elements.inputApiKey.value.trim();
     state.proxyUrl = elements.inputProxyUrl.value.trim();
@@ -296,6 +336,9 @@ function setupEventListeners() {
 
     elements.navSystemId.textContent = state.systemId;
     elements.settingsModal.close();
+
+    // Also re-render UI in case language changed formatters (e.g. date) or static text in UI components
+    renderDashboardUI();
 
     startAutoRefresh();
     loadAllDashboardData(true);
