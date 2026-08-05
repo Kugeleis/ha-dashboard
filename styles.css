@@ -93,10 +93,18 @@ article.dash-card { margin-bottom: 1.25rem; padding: 0; border: 1px solid var(--
 
 /* Live Hero & Metric Grid */
 .live-card-body { padding: 1.25rem; }
-.power-hero { text-align: center; padding: 0.5rem 0 1rem 0; }
-.power-main-val { display: flex; align-items: baseline; justify-content: center; gap: 0.4rem; }
+.power-hero { text-align: center; padding: 0.5rem 0 1rem 0; position: relative; }
+
+/* Sun Travel Arc */
+.power-arc-container { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 300px; height: 100%; pointer-events: none; z-index: 0; opacity: 0.8; }
+.sun-arc-svg { width: 100%; height: auto; margin-top: -10px; }
+.arc-progress { transition: stroke-dashoffset 1s ease-in-out; }
+.sun-pointer { transition: transform 1s ease-in-out; }
+
+.power-main-val { display: flex; align-items: baseline; justify-content: center; gap: 0.4rem; position: relative; z-index: 1; margin-top: 1.5rem; }
 .hero-number { font-family: var(--pico-font-family-header); font-size: 3.8rem; font-weight: 800; line-height: 1; color: var(--solar-gold); text-shadow: 0 0 20px rgba(245, 158, 11, 0.35); }
 .hero-unit { font-size: 1.35rem; font-weight: 700; color: var(--solar-amber); }
+.power-sub-info { position: relative; z-index: 1; margin-top: 0.25rem; }
 .sub-val { color: var(--emerald-green); margin-left: 0.3rem; }
 
 .quick-metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; border-top: 1px solid var(--pico-card-border-color); padding-top: 1rem; }
