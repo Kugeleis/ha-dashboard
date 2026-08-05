@@ -781,6 +781,7 @@ function parseStatistic(raw) {
 
 function parseSystemInfo(raw) {
   // getsystem.jsp format: SystemName, Capacity(W), ExportCap, Panels, PanelCap, PanelBrand, Inverters, InverterCap, InverterBrand...
+  // Latitude and Longitude are at indices 13 and 14 respectively according to API spec
   const p = raw.split(",");
   if (p.length < 8) return null;
 
@@ -788,8 +789,67 @@ function parseSystemInfo(raw) {
     name: p[0] || "--",
     capacityWp: p[1] || "--",
     panels: `${p[3] || "--"}x ${p[5] || "--"} (${p[4] || "--"} W)`,
-    inverter: `${p[6] || "--"}x ${p[8] || "--"} (${p[7] || "--"} W)`
+    inverter: `${p[6] || "--"}x ${p[8] || "--"} (${p[7] || "--"} W)`,
+    latitude: p.length > 13 && p[13] && p[13] !== "NaN" ? parseFloat(p[13]) : null,
+    longitude: p.length > 14 && p[14] && p[14] !== "NaN" ? parseFloat(p[14]) : null
   };
+}
+
+function updateSunArc() {
+  const container = document.getElementById("sun-arc-container");
+  const progressPath = document.getElementById("sun-arc-progress");
+  const sunGroup = document.getElementById("sun-pointer");
+  if (!container || !progressPath || !sunGroup) return;
+
+  if (!state.systemInfo || state.systemInfo.latitude === null || state.systemInfo.longitude === null || !window.SunCalc) {
+    container.style.display = "none";
+    return;
+  }
+
+  // Determine current effective time
+  let now = new Date();
+  if (state.liveStatus && state.liveStatus.date && state.liveStatus.time) {
+    const y = parseInt(state.liveStatus.date.substring(0, 4), 10);
+    const m = parseInt(state.liveStatus.date.substring(4, 6), 10) - 1;
+    const d = parseInt(state.liveStatus.date.substring(6, 8), 10);
+    const [hh, mm] = state.liveStatus.time.split(":").map(Number);
+    now = new Date(y, m, d, hh, mm);
+  }
+
+  const times = window.SunCalc.getTimes(now, state.systemInfo.latitude, state.systemInfo.longitude);
+  const sunrise = times.sunrise;
+  const sunset = times.sunset;
+
+  // We show the arc during the day, or always visible but at 0 or 100%
+  container.style.display = "block";
+
+  let progress = 0;
+  if (now > sunset) {
+    progress = 1;
+  } else if (now > sunrise) {
+    const totalDayTime = sunset.getTime() - sunrise.getTime();
+    const elapsed = now.getTime() - sunrise.getTime();
+    progress = Math.max(0, Math.min(1, elapsed / totalDayTime));
+  }
+
+  // Total length of the arc path (for viewBox 0 0 200 120 and r=90, length is PI * r = ~282.7)
+  const arcLength = 282.74;
+  progressPath.style.strokeDasharray = arcLength;
+  progressPath.style.strokeDashoffset = arcLength - (arcLength * progress);
+
+  // Position the sun pointer along the arc
+  // Angle goes from 180 degrees (left) to 0 degrees (right)
+  const angleDeg = 180 - (progress * 180);
+  const angleRad = angleDeg * (Math.PI / 180);
+
+  // Center is (100, 110), radius is 90
+  const cx = 100;
+  const cy = 110;
+  const r = 90;
+  const sunX = cx + r * Math.cos(angleRad);
+  const sunY = cy - r * Math.sin(angleRad);
+
+  sunGroup.setAttribute("transform", `translate(${sunX}, ${sunY})`);
 }
 
 // Energy Formatter (Wh for < 1000 Wh, 3 decimals for < 10 kWh)
@@ -884,6 +944,9 @@ function renderDashboardUI() {
   // 3. Render Charts
   renderIntradayChart();
   renderHistoryChart();
+
+  // Update Sun Arc Position
+  updateSunArc();
 
   // 4. Update Lifetime Stats & System Configuration
   if (state.statistic) {
