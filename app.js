@@ -832,8 +832,8 @@ function updateSunArc() {
     progress = Math.max(0, Math.min(1, elapsed / totalDayTime));
   }
 
-  // Total length of the arc path (for viewBox 0 0 200 120 and r=90, length is PI * r = ~282.7)
-  const arcLength = 282.74;
+  // Total length of the arc path (for viewBox 0 0 280 120, rx=130, ry=90, length is approx 348.5)
+  const arcLength = 348.5;
   progressPath.style.strokeDasharray = arcLength;
   progressPath.style.strokeDashoffset = arcLength - (arcLength * progress);
 
@@ -842,12 +842,13 @@ function updateSunArc() {
   const angleDeg = 180 - (progress * 180);
   const angleRad = angleDeg * (Math.PI / 180);
 
-  // Center is (100, 110), radius is 90
-  const cx = 100;
+  // Center is (140, 110), rx is 130, ry is 90
+  const cx = 140;
   const cy = 110;
-  const r = 90;
-  const sunX = cx + r * Math.cos(angleRad);
-  const sunY = cy - r * Math.sin(angleRad);
+  const rx = 130;
+  const ry = 90;
+  const sunX = cx + rx * Math.cos(angleRad);
+  const sunY = cy - ry * Math.sin(angleRad);
 
   sunGroup.setAttribute("transform", `translate(${sunX}, ${sunY})`);
 }
