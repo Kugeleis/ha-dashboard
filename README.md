@@ -6,6 +6,20 @@ Designed with a 100% German user interface (*100% Deutsch*) tailored for high vi
 
 ---
 
+## 🏗️ Project Architecture (SOLID & ES6 Modules)
+
+The codebase has been meticulously refactored using pure vanilla JavaScript to embrace **SOLID** principles, particularly the **Single Responsibility Principle (SRP)**, while preserving maximum readability (**KISS**). There are no complex build steps required.
+
+The application logic is broken down into highly focused ES6 modules:
+- `app.js` (Orchestrator): The main entry point. It holds the global state, binds modules together, handles timing/intervals, and orchestrates the data loading flow.
+- `api.js` (`PVOutputAPI`): Strictly handles all interactions with PVOutput.org. This includes multi-proxy fallbacks, rate limit throttling, sequential data fetching, and transforming raw CSV data into clean JS objects.
+- `ui.js` (`DashboardUI`): Manages the DOM. Responsible for taking state data and rendering it to the visual components, including updating texts, classes, conditional visibility, and the sun arc position.
+- `charts.js` (`DashboardCharts`): Wraps the Chart.js library to specifically handle the creation, updating, and lifecycle of the historical and intraday graphs.
+- `i18n.js` (`I18n`): Isolates all translation dictionaries and logic to apply current language configurations to the DOM.
+- `utils.js`: A collection of pure, stateless utility functions (e.g., date parsing, number formatting, and async delays).
+
+---
+
 ## 🚀 Key Features & Architecture
 
 - **Real-Time Generation Monitoring**: Displays current power output (Watts), daily energy yield, specific efficiency (kWh/kWp), inverter module temperature (°C), and peak power today with timestamp.
