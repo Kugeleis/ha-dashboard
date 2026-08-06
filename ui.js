@@ -47,6 +47,19 @@ export class DashboardUI {
     const sunrise = times.sunrise;
     const sunset = times.sunset;
 
+    // Helper to format Date to HH:MM
+    const formatTime = (dateObj) => {
+      if (!dateObj || isNaN(dateObj.getTime())) return "--:--";
+      const h = String(dateObj.getHours()).padStart(2, '0');
+      const m = String(dateObj.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    };
+
+    const sunriseEl = document.getElementById("sun-arc-sunrise");
+    const sunsetEl = document.getElementById("sun-arc-sunset");
+    if (sunriseEl) sunriseEl.textContent = formatTime(sunrise);
+    if (sunsetEl) sunsetEl.textContent = formatTime(sunset);
+
     container.style.display = "block";
 
     let progress = 0;

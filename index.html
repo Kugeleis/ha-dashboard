@@ -84,17 +84,20 @@
           <!-- Main Hero Power Display -->
           <div class="power-hero">
             <div class="power-arc-container" id="sun-arc-container" style="display: none;">
-              <svg class="sun-arc-svg" viewBox="0 0 280 120" preserveAspectRatio="xMidYMax meet">
+              <svg class="sun-arc-svg" viewBox="0 0 280 140" preserveAspectRatio="xMidYMax meet">
                 <!-- Background Arc -->
-                <path class="arc-bg" d="M 10,110 A 130,90 0 0,1 270,110" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="8" stroke-linecap="round"/>
+                <path class="arc-bg" d="M 10,110 A 130,90 0 0,1 270,110" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="4" stroke-linecap="round"/>
                 <!-- Foreground Progress Arc -->
-                <path class="arc-progress" id="sun-arc-progress" d="M 10,110 A 130,90 0 0,1 270,110" fill="none" stroke="var(--solar-amber)" stroke-width="8" stroke-linecap="round" stroke-dasharray="348.5" stroke-dashoffset="348.5"/>
+                <path class="arc-progress" id="sun-arc-progress" d="M 10,110 A 130,90 0 0,1 270,110" fill="none" stroke="var(--solar-amber)" stroke-width="4" stroke-linecap="round" stroke-dasharray="348.5" stroke-dashoffset="348.5"/>
                 <!-- Sun Pointer -->
                 <g class="sun-pointer" id="sun-pointer" transform="translate(10, 110)">
                   <circle cx="0" cy="0" r="6" fill="var(--solar-gold)" stroke="rgba(245, 158, 11, 0.4)" stroke-width="4"/>
                   <!-- Optional rays for sun -->
                   <path d="M 0,-10 L 0,-14 M 0,10 L 0,14 M -10,0 L -14,0 M 10,0 L 14,0 M -7,-7 L -10,-10 M 7,7 L 10,10 M -7,7 L -10,10 M 7,-7 L 10,-10" stroke="var(--solar-gold)" stroke-width="2" stroke-linecap="round"/>
                 </g>
+                <!-- Sunrise and Sunset Times -->
+                <text id="sun-arc-sunrise" x="10" y="135" fill="var(--pico-muted-color)" font-size="12" font-family="var(--pico-font-family-sans)" text-anchor="middle">--:--</text>
+                <text id="sun-arc-sunset" x="270" y="135" fill="var(--pico-muted-color)" font-size="12" font-family="var(--pico-font-family-sans)" text-anchor="middle">--:--</text>
               </svg>
             </div>
             <div class="power-main-val">
