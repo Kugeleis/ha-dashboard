@@ -104,7 +104,11 @@ article.dash-card { margin-bottom: 1.25rem; padding: 0; border: 1px solid var(--
 .power-main-val { display: flex; align-items: baseline; justify-content: center; gap: 0.4rem; position: relative; z-index: 1; margin-top: 1.5rem; }
 .hero-number { font-family: var(--pico-font-family-header); font-size: 3.8rem; font-weight: 800; line-height: 1; color: var(--solar-gold); text-shadow: 0 0 20px rgba(245, 158, 11, 0.35); }
 .hero-unit { font-size: 1.35rem; font-weight: 700; color: var(--solar-amber); }
-.power-sub-info { position: relative; z-index: 1; margin-top: 0.25rem; }
+.power-sub-info-wrapper { position: relative; z-index: 1; margin-top: 0.25rem; max-width: 420px; margin-left: auto; margin-right: auto; }
+.power-sub-info { display: inline-block; }
+.sun-time-label { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; color: var(--pico-muted-color); font-family: var(--pico-font-family-sans); }
+.sunrise-label { left: 3.57%; }
+.sunset-label { left: 96.43%; }
 .sub-val { color: var(--emerald-green); margin-left: 0.3rem; }
 
 .quick-metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; border-top: 1px solid var(--pico-card-border-color); padding-top: 1rem; }
