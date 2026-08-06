@@ -74,19 +74,22 @@ export class DashboardUI {
       progress = Math.max(0, Math.min(1, elapsed / totalDayTime));
     }
 
-    const arcLength = 321.3;
+    const arcLength = progressPath.getTotalLength ? progressPath.getTotalLength() : 321.3;
     progressPath.style.strokeDasharray = arcLength;
     progressPath.style.strokeDashoffset = arcLength - (arcLength * progress);
 
-    const angleDeg = 180 - (progress * 180);
-    const angleRad = angleDeg * (Math.PI / 180);
-
-    const cx = 140;
-    const cy = 90;
-    const rx = 130;
-    const ry = 70;
-    const sunX = cx + rx * Math.cos(angleRad);
-    const sunY = cy - ry * Math.sin(angleRad);
+    let sunX, sunY;
+    if (progressPath.getPointAtLength) {
+      const point = progressPath.getPointAtLength(arcLength * progress);
+      sunX = point.x;
+      sunY = point.y;
+    } else {
+      // Fallback if getPointAtLength is not available
+      const angleDeg = 180 - (progress * 180);
+      const angleRad = angleDeg * (Math.PI / 180);
+      sunX = 140 + 130 * Math.cos(angleRad);
+      sunY = 80 - 70 * Math.sin(angleRad);
+    }
 
     sunGroup.setAttribute("transform", `translate(${sunX}, ${sunY})`);
   }
