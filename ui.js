@@ -29,10 +29,13 @@ export class DashboardUI {
     const sunGroup = document.getElementById("sun-pointer");
     if (!container || !progressPath || !sunGroup) return;
 
-    if (!this.state.systemInfo || this.state.systemInfo.latitude === null || this.state.systemInfo.longitude === null || !window.SunCalc) {
+    if (!window.SunCalc) {
       container.style.display = "none";
       return;
     }
+
+    const lat = (this.state.systemInfo && this.state.systemInfo.latitude !== null) ? this.state.systemInfo.latitude : 52.52;
+    const lng = (this.state.systemInfo && this.state.systemInfo.longitude !== null) ? this.state.systemInfo.longitude : 13.40;
 
     let now = new Date();
     if (this.state.liveStatus && this.state.liveStatus.date && this.state.liveStatus.time) {
@@ -43,7 +46,7 @@ export class DashboardUI {
       now = new Date(y, m, d, hh, mm);
     }
 
-    const times = window.SunCalc.getTimes(now, this.state.systemInfo.latitude, this.state.systemInfo.longitude);
+    const times = window.SunCalc.getTimes(now, lat, lng);
     const sunrise = times.sunrise;
     const sunset = times.sunset;
 
@@ -71,7 +74,7 @@ export class DashboardUI {
       progress = Math.max(0, Math.min(1, elapsed / totalDayTime));
     }
 
-    const arcLength = 348.5;
+    const arcLength = 321.3;
     progressPath.style.strokeDasharray = arcLength;
     progressPath.style.strokeDashoffset = arcLength - (arcLength * progress);
 
@@ -79,9 +82,9 @@ export class DashboardUI {
     const angleRad = angleDeg * (Math.PI / 180);
 
     const cx = 140;
-    const cy = 110;
+    const cy = 90;
     const rx = 130;
-    const ry = 90;
+    const ry = 70;
     const sunX = cx + rx * Math.cos(angleRad);
     const sunY = cy - ry * Math.sin(angleRad);
 
