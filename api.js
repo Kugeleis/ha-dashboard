@@ -254,4 +254,28 @@ export class PVOutputAPI {
       longitude: p.length > 14 && p[14] && p[14] !== "NaN" ? parseFloat(p[14]) : null
     };
   }
+
+  // Open-Meteo API Fetcher
+  async fetchOpenMeteo(lat, lng) {
+    if (lat === null || lng === null) return null;
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`;
+
+    try {
+      const res = await this.fetchWithTimeout(url, { cache: "no-store" }, 2500);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.current) {
+          return {
+            temperature_2m: data.current.temperature_2m,
+            weather_code: data.current.weather_code
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("Open-Meteo Fetch Error:", err);
+    }
+
+    return null;
+  }
 }
