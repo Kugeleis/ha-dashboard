@@ -31,6 +31,7 @@ const state = {
   },
   statistic: null,
   systemInfo: null,
+  openMeteo: null,
 
   // UI State
   activeGranularity: "d",
@@ -343,6 +344,18 @@ async function loadAllDashboardData(manual = false) {
         if (e.message === "RATE_LIMIT_EXCEEDED") rateLimitHit = true;
         console.warn("getsystem.jsp fetch warning:", e);
       }
+    }
+
+    // 5. Fetch Open-Meteo weather
+    try {
+      const lat = (state.systemInfo && state.systemInfo.latitude !== null) ? state.systemInfo.latitude : 52.52;
+      const lng = (state.systemInfo && state.systemInfo.longitude !== null) ? state.systemInfo.longitude : 13.40;
+      const weatherData = await api.fetchOpenMeteo(lat, lng);
+      if (weatherData) {
+        state.openMeteo = weatherData;
+      }
+    } catch (e) {
+      console.warn("Open-Meteo fetch error in loadAllDashboardData:", e);
     }
 
     syncTodayOutputWithLiveStatus();

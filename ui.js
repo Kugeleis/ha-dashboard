@@ -110,26 +110,59 @@ export class DashboardUI {
       const dateFormatted = formatGermanDate(this.state.liveStatus.date);
       this.elements.liveTime.textContent = dateFormatted !== "--" ? `${this.i18n.get('liveTimeStand')} ${dateFormatted}, ${this.state.liveStatus.time} ${this.i18n.get('liveTimeUhr')}` : `${this.i18n.get('liveTimeStand')} ${this.state.liveStatus.time} ${this.i18n.get('liveTimeUhr')}`;
       this.elements.liveEfficiency.textContent = this.state.liveStatus.efficiency > 0 ? `${this.state.liveStatus.efficiency.toFixed(2)} kWh/kW` : "-- kWh/kW";
-      this.elements.liveTemp.textContent = this.state.liveStatus.tempC !== null ? `${this.state.liveStatus.tempC.toFixed(1)} °C` : "-- °C";
+
+      if (this.state.openMeteo && this.state.openMeteo.temperature_2m !== undefined) {
+        this.elements.liveTemp.textContent = `${this.state.openMeteo.temperature_2m.toFixed(1)} °C`;
+      } else {
+        this.elements.liveTemp.textContent = this.state.liveStatus.tempC !== null ? `${this.state.liveStatus.tempC.toFixed(1)} °C` : "-- °C";
+      }
     } else {
       this.elements.livePowerVal.textContent = "--";
       this.elements.liveTodayKwh.textContent = "--";
       this.elements.liveTime.textContent = `${this.i18n.get('liveTimeStand')} --:-- ${this.i18n.get('liveTimeUhr')}`;
       this.elements.liveEfficiency.textContent = "-- kWh/kW";
-      this.elements.liveTemp.textContent = "-- °C";
+      if (this.state.openMeteo && this.state.openMeteo.temperature_2m !== undefined) {
+        this.elements.liveTemp.textContent = `${this.state.openMeteo.temperature_2m.toFixed(1)} °C`;
+      } else {
+        this.elements.liveTemp.textContent = "-- °C";
+      }
     }
 
     // Today's Peak Power & Weather
     if (todayOutput) {
       this.elements.livePeakPower.textContent = todayOutput.peakPowerW ? `${todayOutput.peakPowerW} W` : "-- W";
       this.elements.livePeakTime.textContent = todayOutput.peakTime ? `${this.i18n.get('um')} ${todayOutput.peakTime} ${this.i18n.get('liveTimeUhr')}` : `--:-- ${this.i18n.get('liveTimeUhr')}`;
-
-      const condLower = (todayOutput.condition || "").toLowerCase();
-      this.elements.liveCondition.textContent = this.i18n.get("weather" + condLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")) || todayOutput.condition || "--";
     } else {
       this.elements.livePeakPower.textContent = "-- W";
       this.elements.livePeakTime.textContent = `--:-- ${this.i18n.get('liveTimeUhr')}`;
+    }
+
+    const weatherIconEl = document.getElementById("live-condition-icon");
+    if (this.state.openMeteo && this.state.openMeteo.weather_code !== undefined) {
+      const code = this.state.openMeteo.weather_code;
+      let weatherKey = "weatherUnknown";
+      let icon = "❓";
+
+      if (code === 0) { weatherKey = "weatherFine"; icon = "☀️"; }
+      else if (code === 1) { weatherKey = "weatherPartlyCloudy"; icon = "🌤️"; }
+      else if (code === 2) { weatherKey = "weatherPartlyCloudy"; icon = "⛅"; }
+      else if (code === 3) { weatherKey = "weatherCloudy"; icon = "☁️"; }
+      else if (code === 45 || code === 48) { weatherKey = "weatherFog"; icon = "🌫️"; }
+      else if (code >= 51 && code <= 55) { weatherKey = "weatherDrizzle"; icon = "🌦️"; }
+      else if (code >= 61 && code <= 65) { weatherKey = "weatherRain"; icon = "🌧️"; }
+      else if (code >= 71 && code <= 75) { weatherKey = "weatherSnow"; icon = "❄️"; }
+      else if (code >= 80 && code <= 82) { weatherKey = "weatherShowers"; icon = "🌧️"; }
+      else if (code >= 95 && code <= 99) { weatherKey = "weatherThunderstorm"; icon = "⛈️"; }
+
+      this.elements.liveCondition.textContent = this.i18n.get(weatherKey);
+      if (weatherIconEl) weatherIconEl.textContent = icon;
+    } else if (todayOutput && todayOutput.condition) {
+      const condLower = (todayOutput.condition || "").toLowerCase();
+      this.elements.liveCondition.textContent = this.i18n.get("weather" + condLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")) || todayOutput.condition || "--";
+      if (weatherIconEl) weatherIconEl.textContent = "🔆";
+    } else {
       this.elements.liveCondition.textContent = "--";
+      if (weatherIconEl) weatherIconEl.textContent = "🔆";
     }
 
     // 2. Update Yield Summary Tiles
