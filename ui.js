@@ -158,8 +158,23 @@ export class DashboardUI {
       if (weatherIconEl) weatherIconEl.textContent = icon;
     } else if (todayOutput && todayOutput.condition) {
       const condLower = (todayOutput.condition || "").toLowerCase();
-      this.elements.liveCondition.textContent = this.i18n.get("weather" + condLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")) || todayOutput.condition || "--";
-      if (weatherIconEl) weatherIconEl.textContent = "🔆";
+      const weatherKey = "weather" + condLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+      this.elements.liveCondition.textContent = this.i18n.get(weatherKey) || todayOutput.condition || "--";
+
+      if (weatherIconEl) {
+        let icon = "🔆";
+        if (condLower.includes("fine") || condLower.includes("sunny")) icon = "☀️";
+        else if (condLower.includes("partly cloudy")) icon = "⛅";
+        else if (condLower.includes("mostly cloudy")) icon = "☁️";
+        else if (condLower.includes("cloudy")) icon = "☁️";
+        else if (condLower.includes("shower")) icon = "🌧️";
+        else if (condLower.includes("rain")) icon = "🌧️";
+        else if (condLower.includes("drizzle")) icon = "🌦️";
+        else if (condLower.includes("snow")) icon = "❄️";
+        else if (condLower.includes("fog")) icon = "🌫️";
+        else if (condLower.includes("thunderstorm") || condLower.includes("storm")) icon = "⛈️";
+        weatherIconEl.textContent = icon;
+      }
     } else {
       this.elements.liveCondition.textContent = "--";
       if (weatherIconEl) weatherIconEl.textContent = "🔆";
