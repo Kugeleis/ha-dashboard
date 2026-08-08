@@ -1,4 +1,4 @@
-import { formatGermanDate, formatEnergyDisplay, formatTodayYYYYMMDD } from './utils.js';
+import { formatGermanDate, formatEnergyDisplay, formatTodayYYYYMMDD, getWeatherIcon } from './utils.js';
 
 export class DashboardUI {
   constructor(state, elements, i18n, charts) {
@@ -140,44 +140,47 @@ export class DashboardUI {
     const weatherIconEl = document.getElementById("live-condition-icon");
     if (this.state.openMeteo && this.state.openMeteo.weather_code !== undefined) {
       const code = this.state.openMeteo.weather_code;
+      const isDay = this.state.openMeteo.is_day !== 0; // fallback to true if undefined or 1
+      const iconInfo = getWeatherIcon(code, isDay);
       let weatherKey = "weatherUnknown";
-      let icon = "❓";
 
-      if (code === 0) { weatherKey = "weatherFine"; icon = "☀️"; }
-      else if (code === 1) { weatherKey = "weatherPartlyCloudy"; icon = "🌤️"; }
-      else if (code === 2) { weatherKey = "weatherPartlyCloudy"; icon = "⛅"; }
-      else if (code === 3) { weatherKey = "weatherCloudy"; icon = "☁️"; }
-      else if (code === 45 || code === 48) { weatherKey = "weatherFog"; icon = "🌫️"; }
-      else if (code >= 51 && code <= 55) { weatherKey = "weatherDrizzle"; icon = "🌦️"; }
-      else if (code >= 61 && code <= 65) { weatherKey = "weatherRain"; icon = "🌧️"; }
-      else if (code >= 71 && code <= 75) { weatherKey = "weatherSnow"; icon = "❄️"; }
-      else if (code >= 80 && code <= 82) { weatherKey = "weatherShowers"; icon = "🌧️"; }
-      else if (code >= 95 && code <= 99) { weatherKey = "weatherThunderstorm"; icon = "⛈️"; }
+      if (code === 0) weatherKey = "weatherFine";
+      else if (code === 1 || code === 2) weatherKey = "weatherPartlyCloudy";
+      else if (code === 3) weatherKey = "weatherCloudy";
+      else if (code === 45 || code === 48) weatherKey = "weatherFog";
+      else if (code >= 51 && code <= 55) weatherKey = "weatherDrizzle";
+      else if (code >= 61 && code <= 65) weatherKey = "weatherRain";
+      else if (code >= 71 && code <= 77) weatherKey = "weatherSnow";
+      else if (code >= 80 && code <= 82) weatherKey = "weatherShowers";
+      else if (code >= 85 && code <= 86) weatherKey = "weatherSnow";
+      else if (code >= 95 && code <= 99) weatherKey = "weatherThunderstorm";
 
       this.elements.liveCondition.textContent = this.i18n.get(weatherKey);
-      if (weatherIconEl) weatherIconEl.textContent = icon;
+      if (weatherIconEl) {
+        weatherIconEl.innerHTML = `<img src="icons/${iconInfo.slug}.svg" alt="${iconInfo.altText}" class="weather-icon-img" />`;
+      }
     } else if (todayOutput && todayOutput.condition) {
       const condLower = (todayOutput.condition || "").toLowerCase();
       const weatherKey = "weather" + condLower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
       this.elements.liveCondition.textContent = this.i18n.get(weatherKey) || todayOutput.condition || "--";
 
       if (weatherIconEl) {
-        let icon = "🔆";
-        if (condLower.includes("fine") || condLower.includes("sunny")) icon = "☀️";
-        else if (condLower.includes("partly cloudy")) icon = "⛅";
-        else if (condLower.includes("mostly cloudy")) icon = "☁️";
-        else if (condLower.includes("cloudy")) icon = "☁️";
-        else if (condLower.includes("shower")) icon = "🌧️";
-        else if (condLower.includes("rain")) icon = "🌧️";
-        else if (condLower.includes("drizzle")) icon = "🌦️";
-        else if (condLower.includes("snow")) icon = "❄️";
-        else if (condLower.includes("fog")) icon = "🌫️";
-        else if (condLower.includes("thunderstorm") || condLower.includes("storm")) icon = "⛈️";
-        weatherIconEl.textContent = icon;
+        let slug = "partly-cloudy-day";
+        if (condLower.includes("fine") || condLower.includes("sunny")) slug = "clear-day";
+        else if (condLower.includes("partly cloudy")) slug = "partly-cloudy-day";
+        else if (condLower.includes("mostly cloudy") || condLower.includes("cloudy")) slug = "cloudy";
+        else if (condLower.includes("shower") || condLower.includes("rain") || condLower.includes("drizzle")) slug = "rain";
+        else if (condLower.includes("snow")) slug = "snow";
+        else if (condLower.includes("fog")) slug = "fog-day";
+        else if (condLower.includes("thunderstorm") || condLower.includes("storm")) slug = "thunderstorms-day";
+
+        weatherIconEl.innerHTML = `<img src="icons/${slug}.svg" alt="${todayOutput.condition}" class="weather-icon-img" />`;
       }
     } else {
       this.elements.liveCondition.textContent = "--";
-      if (weatherIconEl) weatherIconEl.textContent = "🔆";
+      if (weatherIconEl) {
+         weatherIconEl.innerHTML = `<img src="icons/partly-cloudy-day.svg" alt="unknown weather" class="weather-icon-img" />`;
+      }
     }
 
     // 2. Update Yield Summary Tiles

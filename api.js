@@ -259,7 +259,7 @@ export class PVOutputAPI {
   async fetchOpenMeteo(lat, lng) {
     if (lat === null || lng === null) return null;
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,is_day`;
 
     try {
       const res = await this.fetchWithTimeout(url, { cache: "no-store" }, 2500);
@@ -268,7 +268,8 @@ export class PVOutputAPI {
         if (data && data.current) {
           return {
             temperature_2m: data.current.temperature_2m,
-            weather_code: data.current.weather_code
+            weather_code: data.current.weather_code,
+            is_day: data.current.is_day
           };
         }
       }

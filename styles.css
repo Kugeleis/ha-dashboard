@@ -157,3 +157,5 @@ article.dash-card { margin-bottom: 1.25rem; padding: 0; border: 1px solid var(--
 /* Utility */
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .flex-wrap { flex-wrap: wrap; gap: 0.5rem; }
+.weather-icon-img { width: 1.5rem; height: 1.5rem; display: block; }
+.metric-icon { display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; font-size: 1.25rem; }
